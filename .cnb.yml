@@ -32,7 +32,7 @@ main:
         tags: cnb:arch:amd64
         cpus: 8
       docker:
-        image: ubuntu:24.04
+        build: scripts/cloud.Dockerfile
         volumes:
           - /root/.cargo/registry:copy-on-write
           - /root/.pub-cache:copy-on-write

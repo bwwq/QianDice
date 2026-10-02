@@ -1,0 +1,35 @@
+name: Windows portable UI
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust MSVC
+        run: rustup update stable --no-self-update
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - name: Stable core contracts
+        run: cargo test --all-targets
+      - name: Build portable UI
+        shell: pwsh
+        run: ./scripts/build-windows.ps1
+      - name: Portable lifecycle contracts
+        run: python tests/portable_contract.py target/release/qianbian.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qianbian-windows-ui
+          path: |
+            dist/qianbian-windows-ui.exe
+            Cargo.lock
+            ui/pubspec.lock
+          if-no-files-found: error

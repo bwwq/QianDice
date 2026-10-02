@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y --no-install-recommends ca-certificates curl git unzip zip xz-utils clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 python3
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.90.0
-source /root/.cargo/env
-git clone --depth 1 --branch 3.47.6 https://github.com/flutter/flutter.git /opt/flutter
 export PATH="/opt/flutter/bin:$PATH"
 flutter config --no-analytics --enable-linux-desktop --enable-web
 flutter create --project-name qianbian_ui --platforms linux,windows,web ui
