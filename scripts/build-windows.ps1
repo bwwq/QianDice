@@ -30,9 +30,12 @@ Copy-Item target/release/qianbian.exe dist/windows-payload/qianbian-core.exe
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (-not $vs) { throw '找不到MSVC运行库，请确认C++桌面构建工具已安装' }
-$redist = Get-ChildItem -LiteralPath (Join-Path $vs 'VC/Redist/MSVC') -Directory | Sort-Object Name -Descending | Select-Object -First 1
-$crt = Join-Path $redist.FullName 'x64/Microsoft.VC143.CRT'
-if (-not (Test-Path -LiteralPath $crt)) { throw '找不到可随应用分发的MSVC CRT' }
+$redistRoot = Join-Path $vs 'VC/Redist/MSVC'
+$crtDirectory = Get-ChildItem -LiteralPath $redistRoot -Directory -Recurse |
+    Where-Object { $_.Name -match '^Microsoft\.VC\d+\.CRT$' -and $_.Parent.Name -eq 'x64' } |
+    Sort-Object FullName -Descending | Select-Object -First 1
+if (-not $crtDirectory) { throw "找不到可随应用分发的x64 MSVC CRT：$redistRoot" }
+$crt = $crtDirectory.FullName
 Copy-Item (Join-Path $crt '*.dll') dist/windows-payload -Force
 Compress-Archive -Path dist/windows-payload/* -DestinationPath dist/windows-ui-payload.zip -Force
 $env:QIANBIAN_UI_PAYLOAD = (Resolve-Path dist/windows-ui-payload.zip).Path

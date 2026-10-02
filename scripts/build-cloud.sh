@@ -24,6 +24,7 @@ printf '%s\n' "$desktop_version" > dist/linux-ui/ui-version.txt
 cp scripts/qianbian-ui.sh dist/linux-ui/qianbian-ui
 chmod +x dist/linux-ui/qianbian-ui
 tar -C dist/linux-ui -czf dist/qianbian-linux-ui-x86_64.tar.gz .
+if [[ ${QIANBIAN_LINUX_ONLY:-0} == 1 ]]; then exit 0; fi
 rustup target add x86_64-pc-windows-gnu
 export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
 export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc

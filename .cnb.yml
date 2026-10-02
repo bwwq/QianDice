@@ -89,6 +89,30 @@ main:
               - dist/linux-memory.json
         - name: 确认网页可用
           script: python3 -c "import json; r=json.load(open('dist/ui-runtime-errors.json')); print(r); assert r['verified']"
+  api_trigger_linux_ui:
+    - name: linux-desktop-acceptance
+      runner:
+        tags: cnb:arch:amd64
+        cpus: 8
+      docker:
+        build: scripts/cloud.Dockerfile
+        volumes:
+          - /root/.cargo/registry:copy-on-write
+          - /root/.pub-cache:copy-on-write
+          - /root/.npm:copy-on-write
+      stages:
+        - name: 构建并验收Linux桌面
+          script: |
+            apt-get update -qq
+            apt-get install -y --no-install-recommends xvfb xauth
+            QIANBIAN_LINUX_ONLY=1 bash scripts/build-cloud.sh
+            xvfb-run -a python3 scripts/check-linux-ui.py dist/linux-ui
+        - name: 保存Linux桌面与内存记录
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - dist/qianbian-linux-ui-x86_64.tar.gz
+              - dist/linux-desktop-memory.json
   api_trigger_windows:
     - name: windows-desktop
       runner:
