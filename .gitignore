@@ -1,0 +1,12 @@
+/target/
+/.tools/
+/dist/
+/data/
+/runtime/
+/.scratch/
+**/__pycache__/
+ui/.dart_tool/
+ui/build/
+ui/.flutter-plugins-dependencies
+ui/**/flutter/ephemeral/
+*.log

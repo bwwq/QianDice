@@ -1,0 +1,41 @@
+main:
+  push:
+    - name: rust-verify
+      runner:
+        tags: cnb:arch:amd64
+        cpus: 8
+      docker:
+        image: rust:1.90-bookworm
+        volumes:
+          - /usr/local/cargo/registry:copy-on-write
+          - /usr/local/cargo/git:copy-on-write
+      stages:
+        - name: 云端能力
+          script: |
+            uname -a
+            if test -c /dev/kvm; then echo 'KVM_DEVICE=present'; else echo 'KVM_DEVICE=absent'; fi
+        - name: 稳定规则与协议验证
+          script: cargo test --all-targets
+        - name: Rust构建
+          script: cargo build --release
+  api_trigger_release:
+    - name: portable-release
+      runner:
+        tags: cnb:arch:amd64
+        cpus: 8
+      docker:
+        image: ubuntu:24.04
+        volumes:
+          - /root/.cargo/registry:copy-on-write
+          - /root/.pub-cache:copy-on-write
+      stages:
+        - name: 构建便携发布包
+          script: bash scripts/build-cloud.sh
+  api_trigger_windows:
+    - name: windows-desktop
+      runner:
+        namespace: group
+        tags: [windows]
+      stages:
+        - name: Windows UI便携包
+          script: powershell -NoProfile -File scripts/build-windows.ps1
