@@ -1,5 +1,6 @@
 """Cloud-only reusable integration checks for persistence, auth and plugin lifecycle."""
 import json
+from contextlib import closing
 import os
 from pathlib import Path
 import shutil
@@ -109,7 +110,7 @@ try:
     assert '第 1 次' in command('.pyhello')['public']
     api('/plugins/load', {'path': 'python-example/1.0.0/plugin.json'})
     assert '第 2 次' in command('.pyhello')['public'], 'plugin storage lost during reload'
-    with sqlite3.connect(root / 'data/qianbian.sqlite') as database:
+    with closing(sqlite3.connect(root / 'data/qianbian.sqlite')) as database:
         assert not database.execute("SELECT 1 FROM kv WHERE namespace = 'plugin:python-example'").fetchone(), 'simulation wrote production plugin storage'
     command('.pylater')
     for _ in range(15):
