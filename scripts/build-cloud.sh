@@ -15,10 +15,12 @@ cargo test --locked --all-targets
 cargo build --locked --release
 python3 tests/portable_contract.py target/release/qianbian
 node scripts/capture-ui.mjs
-mkdir -p dist/linux-ui/runtime/current
+desktop_version="linux-ui-$(git rev-parse --short=12 HEAD)"
+mkdir -p "dist/linux-ui/runtime/$desktop_version"
 cp target/release/qianbian dist/qianbian-linux-x86_64
 cp target/release/qianbian dist/linux-ui/qianbian
-cp -a ui/build/linux/x64/release/bundle/. dist/linux-ui/runtime/current/
+cp -a ui/build/linux/x64/release/bundle/. "dist/linux-ui/runtime/$desktop_version/"
+printf '%s\n' "$desktop_version" > dist/linux-ui/ui-version.txt
 cp scripts/qianbian-ui.sh dist/linux-ui/qianbian-ui
 chmod +x dist/linux-ui/qianbian-ui
 tar -C dist/linux-ui -czf dist/qianbian-linux-ui-x86_64.tar.gz .

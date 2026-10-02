@@ -19,4 +19,6 @@ if ! endpoint="$("$root/qianbian" --root "$root" --data-dir "$data" ready 2>/dev
   done
   if [[ $ready != true ]]; then echo "千变后台未能启动，请查看 $data/launcher.log" >&2; exit 1; fi
 fi
-exec "$root/runtime/current/qianbian_ui" --data-dir "$data" --endpoint "$endpoint"
+version="$(cat "$root/ui-version.txt")"
+if [[ ! $version =~ ^linux-ui-[a-f0-9]+$ ]]; then echo '桌面版本记录无效，请重新解压发布包。' >&2; exit 1; fi
+exec "$root/runtime/$version/qianbian_ui" --data-dir "$data" --endpoint "$endpoint"
