@@ -1,0 +1,1459 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "千变管理API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "admin": []
+    },
+    {
+      "session": []
+    }
+  ],
+  "paths": {
+    "/login": {
+      "post": {
+        "summary": "管理令牌换取12小时HttpOnly会话",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/status": {
+      "get": {
+        "summary": "运行状态与最近活动",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        }
+      }
+    },
+    "/worlds": {
+      "get": {
+        "summary": "账号世界快照",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        }
+      }
+    },
+    "/plugins": {
+      "get": {
+        "summary": "插件清单、状态与错误",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        }
+      }
+    },
+    "/backups": {
+      "get": {
+        "summary": "可用完整备份",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        }
+      },
+      "post": {
+        "summary": "暂停写入并创建一致性备份",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ]
+      }
+    },
+    "/sessions": {
+      "get": {
+        "summary": "最近500个团录会话",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "summary": "接口文档",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        }
+      }
+    },
+    "/config": {
+      "get": {
+        "summary": "读取配置，隐藏协议端令牌",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Config"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        }
+      },
+      "put": {
+        "summary": "更新配置，连接配置需重启",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Config"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulate": {
+      "post": {
+        "summary": "隔离模拟，不发送QQ消息",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "context",
+                  "text"
+                ],
+                "properties": {
+                  "context": {
+                    "$ref": "#/components/schemas/Context"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world": {
+      "get": {
+        "summary": "读取账号世界及版本",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionValue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "summary": "按版本更新世界",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "scope",
+                  "value",
+                  "revision"
+                ],
+                "properties": {
+                  "scope": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "object"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plugins/load": {
+      "post": {
+        "summary": "预检并热加载指定版本",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "path"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "description": "插件ID/版本/plugin.json"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plugins/{id}/{action}": {
+      "post": {
+        "summary": "启用或停用插件，action为enable/disable",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ]
+      }
+    },
+    "/plugin-config/{id}": {
+      "get": {
+        "summary": "插件配置与版本",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionValue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "summary": "校验声明式配置并保存",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisionValue"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/content/{kind}": {
+      "get": {
+        "summary": "列出rules或decks文件",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/content/{kind}/{name}": {
+      "get": {
+        "summary": "读取规则或牌堆",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "summary": "保存JSON内容，下次指令生效",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "删除自定义内容",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ]
+      }
+    },
+    "/logs": {
+      "get": {
+        "summary": "按id游标读取最多200条",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/export": {
+      "get": {
+        "summary": "流式导出完整团录，format为txt/html/json",
+        "responses": {
+          "200": {
+            "description": "完整团录文件",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/events": {
+      "get": {
+        "summary": "SSE状态事件，重连后重新获取当前状态",
+        "responses": {
+          "200": {
+            "description": "事件流",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        }
+      }
+    },
+    "/logout": {
+      "post": {
+        "summary": "撤销当前浏览器会话",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ]
+      }
+    },
+    "/shutdown": {
+      "post": {
+        "summary": "停止后台与插件",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-qianbian",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Context": {
+        "type": "object",
+        "required": [
+          "platform",
+          "account",
+          "user"
+        ],
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "account": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "admin": {
+            "type": "boolean",
+            "description": "模拟接口忽略客户端角色权限，真实权限来自平台和骰主配置"
+          }
+        }
+      },
+      "Config": {
+        "type": "object",
+        "properties": {
+          "listen": {
+            "type": "string"
+          },
+          "masters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "prefixes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Account"
+            }
+          },
+          "blocked_users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowed_groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cooldown_ms": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Account": {
+        "type": "object",
+        "required": [
+          "id",
+          "self_id",
+          "mode"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "self_id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "forward",
+              "reverse"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "至少16字符；配置更新时空字符串保留原令牌"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RevisionValue": {
+        "type": "object",
+        "required": [
+          "value",
+          "revision"
+        ],
+        "properties": {
+          "value": {},
+          "revision": {
+            "type": "integer"
+          }
+        }
+      },
+      "CommandResult": {
+        "type": "object",
+        "properties": {
+          "public": {
+            "type": "string"
+          },
+          "private": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "world": {
+            "type": "object"
+          },
+          "export_log": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PluginManifest": {
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "entry"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "entry": {
+            "type": "string"
+          },
+          "api": {
+            "type": "integer"
+          },
+          "config_schema": {
+            "type": "object"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "admin": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "qianbian_session"
+      }
+    }
+  }
+}

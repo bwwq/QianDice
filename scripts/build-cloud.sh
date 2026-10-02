@@ -11,6 +11,7 @@ cp -a ui/build/web/. assets/web/
 cargo test --locked --all-targets
 cargo build --locked --release
 python3 tests/portable_contract.py target/release/qianbian
+node scripts/capture-ui.mjs
 mkdir -p dist/linux-ui/runtime/current
 cp target/release/qianbian dist/qianbian-linux-x86_64
 cp target/release/qianbian dist/linux-ui/qianbian

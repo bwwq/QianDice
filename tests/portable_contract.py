@@ -88,6 +88,17 @@ try:
     assert '第 1 次' in command('.pyhello')['public']
     api('/plugins/load', {'path': 'python-example/1.0.0/plugin.json'})
     assert '第 2 次' in command('.pyhello')['public'], 'plugin storage lost during reload'
+    command('.pylater')
+    for _ in range(15):
+        if command('.pytimers')['public'] == '1':
+            break
+        time.sleep(.2)
+    else:
+        raise AssertionError('Persistent timer did not dispatch')
+    api('/content/rules/contract.json', {'id': 'contract', 'label': '契约检定', 'faces': 2, 'comparison': 'lte'}, 'PUT')
+    command('.st temp contract')
+    assert '契约检定' in command('.ra 测试 2')['public']
+    command('.st temp coc7')
     api('/plugins/python-example/disable', {})
     api('/plugins/decks/disable', {})
     backup = api('/backups', {})['id']

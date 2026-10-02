@@ -33,3 +33,13 @@
 Python 示例：把 `examples/python-plugin` 及 `sdk/python/qianbian.py` 放入 `data/plugins/python-example/1.0.0/`，修改解释器路径，在管理页加载 `python-example/1.0.0/plugin.json`。
 
 Rust 示例：云端运行 `cargo build --release --example rust_plugin`，把产物和 `examples/rust-plugin.json` 放入对应版本目录，清单改名 `plugin.json`；Windows entry 需使用 `.exe` 名称。
+
+## 群文件上传扩展点
+
+按用户要求暂不搭建下载服务，也不要求公网域名。`.log end` 和 `.log upload [名称]` 会寻找声明 `group_file_upload` 能力的插件，调用 `file.upload`：
+
+```json
+{"event":"file.upload","file":{"account":"main","group":"群号","path":"宿主生成的临时TXT绝对路径","name":"团录.txt","content_type":"text/plain; charset=utf-8"}}
+```
+
+插件通过未来配置的协议端上传方式发送文件，只有确认群文件发送成功才返回 `{"confirmed":true}`。当前不随附实际上传器；未接入时日志继续保存在数据库并可从管理端导出。文件只在本次调用期间有效，接口不包含外链。失败不会自动重发，不把团录正文刷到群里。

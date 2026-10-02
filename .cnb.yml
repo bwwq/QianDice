@@ -49,6 +49,9 @@ main:
               - dist/qianbian-linux-ui-x86_64.tar.gz
               - dist/qianbian-windows-web.exe
               - dist/SHA256SUMS
+              - dist/ui-desktop.png
+              - dist/ui-compact.png
+              - dist/ui-runtime-errors.json
   api_trigger_windows:
     - name: windows-desktop
       runner:

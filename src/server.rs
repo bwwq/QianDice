@@ -950,9 +950,8 @@ async fn shutdown(State(app): State<Arc<App>>) -> Json<Value> {
 }
 async fn openapi() -> Json<Value> {
     Json(
-        json!({"openapi":"3.1.0","info":{"title":"千变管理 API","version":"1"},"servers":[{"url":"/api/v1"}],"paths":{
-    "/status":{"get":{"responses":{"200":{"description":"运行状态"}}}},"/simulate":{"post":{"responses":{"200":{"description":"模拟结果，不发送QQ消息"}}}},"/plugins":{"get":{"responses":{"200":{"description":"插件清单与状态"}}}},"/backups":{"post":{"responses":{"200":{"description":"一致性备份标识"}}}},"/events":{"get":{"responses":{"200":{"description":"SSE事件流"}}}}
-},"components":{"securitySchemes":{"admin":{"type":"http","scheme":"bearer"}}},"security":[{"admin":[]}]}),
+        serde_json::from_str(include_str!("../assets/openapi.json"))
+            .expect("embedded OpenAPI is valid"),
     )
 }
 #[derive(rust_embed::RustEmbed)]
