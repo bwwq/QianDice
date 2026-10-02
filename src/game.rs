@@ -1,77 +1,314 @@
-use anyhow::{Result,bail,ensure,Context};
-use serde::{Serialize,Deserialize};
-use std::collections::{BTreeMap,BTreeSet};
-use rand::Rng;
 use crate::dice;
+use anyhow::{Context, Result, bail, ensure};
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct ContextInfo {pub platform:String,pub account:String,pub user:String,#[serde(default)]pub group:Option<String>,#[serde(default)]pub name:String,#[serde(default)]pub admin:bool}
-impl ContextInfo{pub fn scope(&self)->String{serde_json::to_string(&(&self.platform,&self.account)).unwrap()}pub fn room(&self)->String{self.group.clone().unwrap_or_else(||format!("private:{}",self.user))}}
-#[derive(Debug,Clone,Default,Serialize,Deserialize)]
-#[serde(default)]
-pub struct Card{pub name:String,pub rule:String,pub attrs:BTreeMap<String,i64>,pub growth:BTreeSet<String>,pub aliases:BTreeMap<String,String>}
-#[derive(Debug,Clone,Default,Serialize,Deserialize)]
-#[serde(default)]
-pub struct Player{pub current:String,pub cards:BTreeMap<String,Card>,pub bindings:BTreeMap<String,String>,pub nickname:String}
-#[derive(Debug,Clone,Serialize,Deserialize)]
-#[serde(default)]
-pub struct Room{pub enabled:bool,pub rule:String,pub coc_rule:u8,pub log:String,pub recording:bool,pub initiative:BTreeMap<String,i64>,pub deck_used:BTreeMap<String,Vec<usize>>}
-impl Default for Room{fn default()->Self{Self{enabled:true,rule:"coc7".into(),coc_rule:0,log:String::new(),recording:false,initiative:BTreeMap::new(),deck_used:BTreeMap::new()}}}
-#[derive(Debug,Clone,Default,Serialize,Deserialize)]
-#[serde(default)]
-pub struct World{pub players:BTreeMap<String,Player>,pub rooms:BTreeMap<String,Room>,pub replies:BTreeMap<String,String>}
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct CommandRequest{pub context:ContextInfo,pub command:String,pub world:World,#[serde(default)]pub decks:BTreeMap<String,Deck>,#[serde(default)]pub rules:BTreeMap<String,RuleSpec>}
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct RuleSpec{pub id:String,pub label:String,pub faces:u32,#[serde(default="comparison")]pub comparison:String,#[serde(default)]pub critical:Option<u32>,#[serde(default)]pub fumble:Option<u32>}
-fn comparison()->String{"lte".into()}
-impl RuleSpec{pub fn validate(&self)->Result<()>{ensure!(!self.id.is_empty()&&self.id.len()<80,"规则标识无效");ensure!((2..=1_000_000).contains(&self.faces),"规则骰面无效");ensure!(["lte","gte"].contains(&self.comparison.as_str()),"comparison须为lte或gte");for n in [self.critical,self.fumble].into_iter().flatten(){ensure!(n>=1&&n<=self.faces,"特殊骰点超出范围");}Ok(())}}
-#[derive(Debug,Clone,Default,Serialize,Deserialize)]
-pub struct CommandResult{pub public:String,pub private:Option<String>,pub world:World,#[serde(default)]pub export_log:Option<String>}
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct Deck{#[serde(default)]pub without_replacement:bool,pub entries:Vec<DeckEntry>}
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct DeckEntry{pub text:String,#[serde(default="one")]pub weight:u32}
-fn one()->u32{1}
-pub fn built_in_decks()->BTreeMap<String,Deck>{
-    [("临时疯狂",vec!["失忆：忘记近期发生的事件。","身心症状：出现短暂的身体症状。","暴力冲动：由守秘人决定表现。","偏执：暂时无法信任周围的人。","重要之人：把眼前的人认作重要之人。","昏厥：短暂失去意识。","逃跑：强烈希望离开现场。","歇斯底里：无法抑制情绪。","恐惧：产生强烈恐惧。","躁狂：被某种行为冲动支配。"]),("总结疯狂",vec!["失忆","被窃","遍体鳞伤","暴力行为","极端信念","重要之人","被收容","逃避","恐惧症","躁狂症"])].into_iter().map(|(name,items)|(name.into(),Deck{without_replacement:false,entries:items.into_iter().map(|s|DeckEntry{text:s.into(),weight:1}).collect()})).collect()
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextInfo {
+    pub platform: String,
+    pub account: String,
+    pub user: String,
+    #[serde(default)]
+    pub group: Option<String>,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub admin: bool,
 }
-pub fn skill(name:&str)->String {match name.to_lowercase().as_str(){"str"|"力量"=>"力量","con"|"体质"=>"体质","siz"|"体型"=>"体型","dex"|"敏捷"=>"敏捷","app"|"外貌"=>"外貌","int"|"智力"|"灵感"=>"智力","pow"|"意志"=>"意志","edu"|"教育"=>"教育","san"|"理智"|"理智值"=>"理智","luck"|"幸运"=>"幸运","hp"|"生命"=>"生命","mp"|"魔法"=>"魔法",_=>name}.to_string()}
-pub fn grade(roll:u32,value:i64,house:u8)->u8{
-    if roll==1||(house==1&&roll<=5){5}else if roll==100||(value<50&&roll>=96){0}else if roll as i64<=value/5{4}else if roll as i64<=value/2{3}else if roll as i64<=value{2}else{1}
+impl ContextInfo {
+    pub fn scope(&self) -> String {
+        serde_json::to_string(&(&self.platform, &self.account)).unwrap()
+    }
+    pub fn room(&self) -> String {
+        self.group
+            .clone()
+            .unwrap_or_else(|| format!("private:{}", self.user))
+    }
+    pub fn log_scope(&self) -> String {
+        serde_json::to_string(&(&self.platform, &self.account, self.room())).unwrap()
+    }
 }
-pub fn grade_name(g:u8)->&'static str{["大失败","失败","成功","困难成功","极难成功","大成功"][g as usize]}
-fn card<'a>(world:&'a mut World,c:&ContextInfo)->Result<&'a mut Card>{
-    let p=world.players.entry(c.user.clone()).or_default();let name=p.bindings.get(&c.room()).unwrap_or(&p.current).clone();
-    p.cards.get_mut(&name).context("请先用 .st new 名称 创建角色卡，并用 .st lock 绑定当前群")
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Card {
+    pub name: String,
+    pub rule: String,
+    pub attrs: BTreeMap<String, i64>,
+    pub growth: BTreeSet<String>,
+    pub aliases: BTreeMap<String, String>,
 }
-fn attrs_parse(text:&str)->Result<Vec<(String,i64,bool)>>{
-    let mut out=vec![];for token in text.split_whitespace(){
-        let cut=token.find(|c:char|c.is_ascii_digit()||c=='-'||c=='+');
-        let (key,n)=if let Some((k,v))=token.split_once('='){(k,v)}else if let Some(i)=cut{(&token[..i],&token[i..])}else{bail!("属性格式：力量=60 敏捷50")};
-        ensure!(!key.is_empty(),"属性名称不能为空");let relative=!token.contains('=')&&(n.starts_with('+')||n.starts_with('-'));let n:i64=n.parse()?;ensure!((-100000..=100000).contains(&n),"属性数值超出范围");out.push((skill(key),n,relative));
-    }ensure!(!out.is_empty(),"需要属性名称和数值");Ok(out)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Player {
+    pub current: String,
+    pub cards: BTreeMap<String, Card>,
+    pub bindings: BTreeMap<String, String>,
+    pub nickname: String,
 }
-fn parse_skill(text:&str)->Result<(String,Option<i64>)>{let text=text.trim();if let Some((a,b))=text.rsplit_once(' '){if let Ok(v)=b.parse(){return Ok((skill(a.trim()),Some(v)))}}
-    if let Some(i)=text.find(|c:char|c.is_ascii_digit()){if i>0{return Ok((skill(&text[..i]),Some(text[i..].parse()?)))}}
-    ensure!(!text.is_empty(),"请指定技能");Ok((skill(text),None))}
-pub fn normalize_command(input:&str)->String{
-    for prefix in ["rah","rab","rap","ra","rh","r","st","sc","en"]{
-        if let Some(rest)=input.strip_prefix(prefix){
-            if rest.is_empty()||rest.starts_with(char::is_whitespace){return input.into()}
-            if prefix=="rab"||prefix=="rap"{let n=rest.bytes().take_while(u8::is_ascii_digit).count();return format!("{}{} {}",prefix,&rest[..n],rest[n..].trim());}
-            let next=rest.chars().next().unwrap();
-            if !next.is_ascii()||next.is_ascii_digit()||(prefix=="r"&&(next=='d'||next=='b'||next=='p'||next=='('))||(prefix=="st"&&["str","san","dex","con","pow","edu","int","app","siz","hp","mp"].iter().any(|s|rest.starts_with(s))){return format!("{prefix} {rest}")}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Room {
+    pub enabled: bool,
+    pub rule: String,
+    pub coc_rule: u8,
+    pub log: String,
+    pub recording: bool,
+    pub initiative: BTreeMap<String, i64>,
+    pub deck_used: BTreeMap<String, Vec<usize>>,
+}
+impl Default for Room {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            rule: "coc7".into(),
+            coc_rule: 0,
+            log: String::new(),
+            recording: false,
+            initiative: BTreeMap::new(),
+            deck_used: BTreeMap::new(),
         }
-    }input.into()
+    }
 }
-pub fn execute(mut req:CommandRequest)->Result<CommandResult>{
-    let text=req.command.trim();ensure!(text.len()<=4096,"指令过长");
-    let (cmd,args)=text.split_once(' ').unwrap_or((text,""));let args=args.trim();
-    let c=&req.context;let room_id=c.room();let room=req.world.rooms.entry(room_id.clone()).or_default().clone();
-    let mut result=CommandResult::default();
-    if !room.enabled&&cmd!="bot" {result.world=req.world;return Ok(result)}
-    let mut rng=rand::thread_rng();
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct World {
+    pub players: BTreeMap<String, Player>,
+    pub rooms: BTreeMap<String, Room>,
+    pub replies: BTreeMap<String, String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandRequest {
+    pub context: ContextInfo,
+    pub command: String,
+    pub world: World,
+    #[serde(default)]
+    pub decks: BTreeMap<String, Deck>,
+    #[serde(default)]
+    pub rules: BTreeMap<String, RuleSpec>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RuleSpec {
+    pub id: String,
+    pub label: String,
+    pub faces: u32,
+    #[serde(default = "comparison")]
+    pub comparison: String,
+    #[serde(default)]
+    pub critical: Option<u32>,
+    #[serde(default)]
+    pub fumble: Option<u32>,
+}
+fn comparison() -> String {
+    "lte".into()
+}
+impl RuleSpec {
+    pub fn validate(&self) -> Result<()> {
+        ensure!(!self.id.is_empty() && self.id.len() < 80, "规则标识无效");
+        ensure!((2..=1_000_000).contains(&self.faces), "规则骰面无效");
+        ensure!(
+            ["lte", "gte"].contains(&self.comparison.as_str()),
+            "comparison须为lte或gte"
+        );
+        for n in [self.critical, self.fumble].into_iter().flatten() {
+            ensure!(n >= 1 && n <= self.faces, "特殊骰点超出范围");
+        }
+        Ok(())
+    }
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CommandResult {
+    pub public: String,
+    pub private: Option<String>,
+    pub world: World,
+    #[serde(default)]
+    pub export_log: Option<String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Deck {
+    #[serde(default)]
+    pub without_replacement: bool,
+    pub entries: Vec<DeckEntry>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeckEntry {
+    pub text: String,
+    #[serde(default = "one")]
+    pub weight: u32,
+}
+fn one() -> u32 {
+    1
+}
+pub fn built_in_decks() -> BTreeMap<String, Deck> {
+    [
+        (
+            "临时疯狂",
+            vec![
+                "失忆：忘记近期发生的事件。",
+                "身心症状：出现短暂的身体症状。",
+                "暴力冲动：由守秘人决定表现。",
+                "偏执：暂时无法信任周围的人。",
+                "重要之人：把眼前的人认作重要之人。",
+                "昏厥：短暂失去意识。",
+                "逃跑：强烈希望离开现场。",
+                "歇斯底里：无法抑制情绪。",
+                "恐惧：产生强烈恐惧。",
+                "躁狂：被某种行为冲动支配。",
+            ],
+        ),
+        (
+            "总结疯狂",
+            vec![
+                "失忆",
+                "被窃",
+                "遍体鳞伤",
+                "暴力行为",
+                "极端信念",
+                "重要之人",
+                "被收容",
+                "逃避",
+                "恐惧症",
+                "躁狂症",
+            ],
+        ),
+    ]
+    .into_iter()
+    .map(|(name, items)| {
+        (
+            name.into(),
+            Deck {
+                without_replacement: false,
+                entries: items
+                    .into_iter()
+                    .map(|s| DeckEntry {
+                        text: s.into(),
+                        weight: 1,
+                    })
+                    .collect(),
+            },
+        )
+    })
+    .collect()
+}
+pub fn skill(name: &str) -> String {
+    match name.to_lowercase().as_str() {
+        "str" | "力量" => "力量",
+        "con" | "体质" => "体质",
+        "siz" | "体型" => "体型",
+        "dex" | "敏捷" => "敏捷",
+        "app" | "外貌" => "外貌",
+        "int" | "智力" | "灵感" => "智力",
+        "pow" | "意志" => "意志",
+        "edu" | "教育" => "教育",
+        "san" | "理智" | "理智值" => "理智",
+        "luck" | "幸运" => "幸运",
+        "hp" | "生命" => "生命",
+        "mp" | "魔法" => "魔法",
+        _ => name,
+    }
+    .to_string()
+}
+pub fn grade(roll: u32, value: i64, house: u8) -> u8 {
+    if roll == 1 || (house == 1 && roll <= 5) {
+        5
+    } else if roll == 100 || (value < 50 && roll >= 96) {
+        0
+    } else if roll as i64 <= value / 5 {
+        4
+    } else if roll as i64 <= value / 2 {
+        3
+    } else if roll as i64 <= value {
+        2
+    } else {
+        1
+    }
+}
+pub fn grade_name(g: u8) -> &'static str {
+    ["大失败", "失败", "成功", "困难成功", "极难成功", "大成功"][g as usize]
+}
+fn card<'a>(world: &'a mut World, c: &ContextInfo) -> Result<&'a mut Card> {
+    let p = world.players.entry(c.user.clone()).or_default();
+    let name = p.bindings.get(&c.room()).unwrap_or(&p.current).clone();
+    p.cards
+        .get_mut(&name)
+        .context("请先用 .st new 名称 创建角色卡，并用 .st lock 绑定当前群")
+}
+fn attrs_parse(text: &str) -> Result<Vec<(String, i64, bool)>> {
+    let mut out = vec![];
+    for token in text.split_whitespace() {
+        let cut = token.find(|c: char| c.is_ascii_digit() || c == '-' || c == '+');
+        let (key, n) = if let Some((k, v)) = token.split_once('=') {
+            (k, v)
+        } else if let Some(i) = cut {
+            (&token[..i], &token[i..])
+        } else {
+            bail!("属性格式：力量=60 敏捷50")
+        };
+        ensure!(!key.is_empty(), "属性名称不能为空");
+        let relative = !token.contains('=') && (n.starts_with('+') || n.starts_with('-'));
+        let n: i64 = n.parse()?;
+        ensure!((-100000..=100000).contains(&n), "属性数值超出范围");
+        out.push((skill(key), n, relative));
+    }
+    ensure!(!out.is_empty(), "需要属性名称和数值");
+    Ok(out)
+}
+fn parse_skill(text: &str) -> Result<(String, Option<i64>)> {
+    let text = text.trim();
+    if let Some((a, b)) = text.rsplit_once(' ') {
+        if let Ok(v) = b.parse() {
+            return Ok((skill(a.trim()), Some(v)));
+        }
+    }
+    if let Some(i) = text.find(|c: char| c.is_ascii_digit()) {
+        if i > 0 {
+            return Ok((skill(&text[..i]), Some(text[i..].parse()?)));
+        }
+    }
+    ensure!(!text.is_empty(), "请指定技能");
+    Ok((skill(text), None))
+}
+pub fn normalize_command(input: &str) -> String {
+    for prefix in ["rah", "rab", "rap", "ra", "rh", "r", "st", "sc", "en"] {
+        if let Some(rest) = input.strip_prefix(prefix) {
+            if rest.is_empty() || rest.starts_with(char::is_whitespace) {
+                return input.into();
+            }
+            if prefix == "rab" || prefix == "rap" {
+                let n = rest.bytes().take_while(u8::is_ascii_digit).count();
+                return format!("{}{} {}", prefix, &rest[..n], rest[n..].trim());
+            }
+            let next = rest.chars().next().unwrap();
+            if !next.is_ascii()
+                || next.is_ascii_digit()
+                || (prefix == "r" && (next == 'd' || next == 'b' || next == 'p' || next == '('))
+                || (prefix == "st"
+                    && [
+                        "str", "san", "dex", "con", "pow", "edu", "int", "app", "siz", "hp", "mp",
+                    ]
+                    .iter()
+                    .any(|s| rest.starts_with(s)))
+            {
+                return format!("{prefix} {rest}");
+            }
+        }
+    }
+    input.into()
+}
+pub fn execute(mut req: CommandRequest) -> Result<CommandResult> {
+    let text = req.command.trim();
+    ensure!(text.len() <= 4096, "指令过长");
+    let (cmd, args) = text.split_once(' ').unwrap_or((text, ""));
+    let args = args.trim();
+    let c = &req.context;
+    let room_id = c.room();
+    let room = req.world.rooms.entry(room_id.clone()).or_default().clone();
+    let mut result = CommandResult::default();
+    if !room.enabled && cmd != "bot" {
+        result.world = req.world;
+        return Ok(result);
+    }
+    let mut rng = rand::thread_rng();
     result.public=match cmd{
         "help"|"帮助"=>"千变 · 跑团指令\n.r 1d100 / .rh 1d100 / .r 3#1d6\n.st new 名称 / .st 力量60 理智60 / .st lock\n.ra 侦查 / .rab1 侦查 / .rav 侦查 @对方\n.sc 0/1d6 / .en 侦查 / .ti / .li\n.coc / .dnd / .ri 名称 / .init\n.draw 牌堆 / .log on 名称 / .log end\n.setcoc 0 / .setrule coc7|dnd5e / .bot on|off\n.st help 查看角色卡操作".into(),
         "bot"=>{ensure!(c.admin,"仅骰主或群管理员可以启停");let enabled=match args{"on"=>true,"off"=>false,_=>bail!("用法：.bot on 或 .bot off")};req.world.rooms.get_mut(&room_id).unwrap().enabled=enabled;format!("千变已{}",if enabled{"启用"}else{"停用"})},
@@ -135,15 +372,111 @@ pub fn execute(mut req:CommandRequest)->Result<CommandResult>{
         "adv"|"dis"=>{let modifier=if args.is_empty(){0}else{args.parse::<i64>()?};let r=dice::roll(if cmd=="adv"{"2d20kh1"}else{"2d20kl1"},20)?;let total=r.total.checked_add(modifier).context("加值溢出")?;format!("{} + {modifier} = {} ({})",r.total,total,r.detail.join("；"))},
         _=>req.world.replies.get(cmd).cloned().unwrap_or_else(||"未知指令，使用 .help 查看帮助".into()),
     };
-    ensure!(result.public.len()<=24000,"结果过长，请在管理端查看或减少投掷数量");result.world=req.world;Ok(result)
+    ensure!(
+        result.public.len() <= 24000,
+        "结果过长，请在管理端查看或减少投掷数量"
+    );
+    result.world = req.world;
+    Ok(result)
 }
-fn draw(name:&str,decks:&BTreeMap<String,Deck>,room:&mut Room,depth:usize,rng:&mut impl Rng)->Result<String>{
-    ensure!(depth<8,"牌堆引用过深或循环");let deck=decks.get(name).context("牌堆不存在")?;ensure!(!deck.entries.is_empty()&&deck.entries.len()<=10000,"牌堆为空或过大");
-    let used=room.deck_used.entry(name.into()).or_default();let available:Vec<_>=deck.entries.iter().enumerate().filter(|(i,e)|e.weight>0&&(!deck.without_replacement||!used.contains(i))).collect();ensure!(!available.is_empty(),"牌堆已抽完，请在管理端重置");let total:u64=available.iter().map(|(_,e)|e.weight as u64).sum();let mut pick=rng.gen_range(0..total);let mut selected=available[0];for item in available{if pick<item.1.weight as u64{selected=item;break}pick-=item.1.weight as u64;}let index=selected.0;let text=selected.1.text.clone();if deck.without_replacement{used.push(index);}
-    let mut output=String::new();let mut remain=text.as_str();while let Some(i)=remain.find('{'){output.push_str(&remain[..i]);let rest=&remain[i+1..];let(j,target)=rest.find('}').map(|j|(j,&rest[..j])).context("牌堆引用缺少右括号")?;output.push_str(&draw(target,decks,room,depth+1,rng)?);remain=&rest[j+1..];ensure!(output.len()<12000,"牌堆结果过长");}output.push_str(remain);Ok(output)
+fn draw(
+    name: &str,
+    decks: &BTreeMap<String, Deck>,
+    room: &mut Room,
+    depth: usize,
+    rng: &mut impl Rng,
+) -> Result<String> {
+    ensure!(depth < 8, "牌堆引用过深或循环");
+    let deck = decks.get(name).context("牌堆不存在")?;
+    ensure!(
+        !deck.entries.is_empty() && deck.entries.len() <= 10000,
+        "牌堆为空或过大"
+    );
+    let used = room.deck_used.entry(name.into()).or_default();
+    let available: Vec<_> = deck
+        .entries
+        .iter()
+        .enumerate()
+        .filter(|(i, e)| e.weight > 0 && (!deck.without_replacement || !used.contains(i)))
+        .collect();
+    ensure!(!available.is_empty(), "牌堆已抽完，请在管理端重置");
+    let total: u64 = available.iter().map(|(_, e)| e.weight as u64).sum();
+    let mut pick = rng.gen_range(0..total);
+    let mut selected = available[0];
+    for item in available {
+        if pick < item.1.weight as u64 {
+            selected = item;
+            break;
+        }
+        pick -= item.1.weight as u64;
+    }
+    let index = selected.0;
+    let text = selected.1.text.clone();
+    if deck.without_replacement {
+        used.push(index);
+    }
+    let mut output = String::new();
+    let mut remain = text.as_str();
+    while let Some(i) = remain.find('{') {
+        output.push_str(&remain[..i]);
+        let rest = &remain[i + 1..];
+        let (j, target) = rest
+            .find('}')
+            .map(|j| (j, &rest[..j]))
+            .context("牌堆引用缺少右括号")?;
+        output.push_str(&draw(target, decks, room, depth + 1, rng)?);
+        remain = &rest[j + 1..];
+        ensure!(output.len() < 12000, "牌堆结果过长");
+    }
+    output.push_str(remain);
+    Ok(output)
 }
-#[cfg(test)]mod tests{
-use super::*;
-#[test]fn coc_boundaries(){assert_eq!(grade(1,60,0),5);assert_eq!(grade(12,60,0),4);assert_eq!(grade(30,60,0),3);assert_eq!(grade(60,60,0),2);assert_eq!(grade(61,60,0),1);assert_eq!(grade(96,49,0),0);assert_eq!(grade(96,50,0),1);assert_eq!(grade(100,99,0),0);}
-#[test]fn group_binding_and_explicit_san(){let c=ContextInfo{platform:"qq".into(),account:"a".into(),user:"u".into(),group:Some("g".into()),name:"u".into(),admin:false};let mut w=World::default();for cmd in ["st new 调查员","st 理智60","st new 另一张","st 理智80","st set 调查员","st lock","st set 另一张","sc 0/0 20"] {w=execute(CommandRequest{context:c.clone(),command:cmd.into(),world:w,decks:built_in_decks(),rules:BTreeMap::new()}).unwrap().world;}assert_eq!(card(&mut w,&c).unwrap().name,"调查员");assert_eq!(card(&mut w,&c).unwrap().attrs["理智"],60);}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn coc_boundaries() {
+        assert_eq!(grade(1, 60, 0), 5);
+        assert_eq!(grade(12, 60, 0), 4);
+        assert_eq!(grade(30, 60, 0), 3);
+        assert_eq!(grade(60, 60, 0), 2);
+        assert_eq!(grade(61, 60, 0), 1);
+        assert_eq!(grade(96, 49, 0), 0);
+        assert_eq!(grade(96, 50, 0), 1);
+        assert_eq!(grade(100, 99, 0), 0);
+    }
+    #[test]
+    fn group_binding_and_explicit_san() {
+        let c = ContextInfo {
+            platform: "qq".into(),
+            account: "a".into(),
+            user: "u".into(),
+            group: Some("g".into()),
+            name: "u".into(),
+            admin: false,
+        };
+        let mut w = World::default();
+        for cmd in [
+            "st new 调查员",
+            "st 理智60",
+            "st new 另一张",
+            "st 理智80",
+            "st set 调查员",
+            "st lock",
+            "st set 另一张",
+            "sc 0/0 20",
+        ] {
+            w = execute(CommandRequest {
+                context: c.clone(),
+                command: cmd.into(),
+                world: w,
+                decks: built_in_decks(),
+                rules: BTreeMap::new(),
+            })
+            .unwrap()
+            .world;
+        }
+        assert_eq!(card(&mut w, &c).unwrap().name, "调查员");
+        assert_eq!(card(&mut w, &c).unwrap().attrs["理智"], 60);
+    }
 }
