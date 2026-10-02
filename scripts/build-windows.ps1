@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 flutter config --no-analytics --enable-windows-desktop
 $lockedDependencies = [System.IO.File]::ReadAllBytes((Join-Path $PWD 'ui/pubspec.lock'))
 flutter create --no-pub --project-name qianbian_ui --platforms windows ui
