@@ -26,6 +26,38 @@ main:
             attachments:
               - Cargo.lock
               - target/release/qianbian
+  api_trigger_functional:
+    - name: onebot-linux-functional
+      runner:
+        tags: cnb:arch:amd64
+        cpus: 8
+      docker:
+        image: rust:1.90-bookworm
+        volumes:
+          - /usr/local/cargo/registry:copy-on-write
+          - /usr/local/cargo/git:copy-on-write
+      stages:
+        - name: 编译并并发验证OneBot功能
+          script: |
+            python3 scripts/verify-linux-functions.py || true
+            if python3 -c "import json; assert json.load(open('dist/functional-report/summary.json'))['status']=='passed'"; then
+              cargo build --locked --release --example rust_plugin
+              QIANBIAN_TEST_REPORT_DIR=dist/functional-report python3 tests/sdk_contract.py target/release/examples/rust_plugin
+              python3 tests/portable_contract.py target/release/qianbian
+            else
+              printf '{"status":"skipped","id":"rust_sdk"}' > dist/functional-report/rust_sdk.json
+            fi
+            tar -C dist/functional-report -czf dist/functional-transcripts.tar.gz .
+        - name: 保存功能结果与收发记录
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - dist/functional-report/summary.json
+              - dist/functional-report/onebot-tests.log
+              - dist/functional-report/rust_sdk.json
+              - dist/functional-transcripts.tar.gz
+        - name: 确认所有功能验收通过
+          script: python3 -c "import json; assert json.load(open('dist/functional-report/summary.json'))['status']=='passed'; assert json.load(open('dist/functional-report/rust_sdk.json'))['status']=='passed'"
   api_trigger_release:
     - name: portable-release
       runner:

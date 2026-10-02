@@ -2,6 +2,7 @@ use crate::dice;
 use anyhow::{Context, Result, bail, ensure};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,6 +58,7 @@ pub struct Room {
     pub last_log: String,
     pub initiative: BTreeMap<String, i64>,
     pub deck_used: BTreeMap<String, Vec<usize>>,
+    pub deck_versions: BTreeMap<String, String>,
 }
 impl Default for Room {
     fn default() -> Self {
@@ -69,6 +71,7 @@ impl Default for Room {
             last_log: String::new(),
             initiative: BTreeMap::new(),
             deck_used: BTreeMap::new(),
+            deck_versions: BTreeMap::new(),
         }
     }
 }
@@ -345,6 +348,20 @@ pub fn execute(mut req: CommandRequest) -> Result<CommandResult> {
         "sc"=>{let mut parts=args.split_whitespace();let loss=parts.next().context("格式：.sc 0/1d6 [SAN]")?;let (success,failure)=loss.split_once('/').context("需要成功/失败损失")?;let explicit=parts.next().map(str::parse::<i64>).transpose()?;let san=if let Some(v)=explicit{v}else{*card(&mut req.world,c)?.attrs.get("理智").context("角色未录入理智")?};ensure!((0..=99).contains(&san),"理智数值无效");let value=rng.gen_range(1..=100);let chosen=if value as i64<=san{success}else{failure};let lost=if grade(value,san,room.coc_rule)==0{dice::max_value(chosen)?}else{dice::roll(chosen,100)?.total};ensure!(lost>=0,"损失不能为负数");let remaining=(san-lost).max(0);if explicit.is_none(){card(&mut req.world,c)?.attrs.insert("理智".into(),remaining);}format!("理智检定 {value}/{san}：{}，损失 {lost}，剩余 {remaining}{}",if value as i64<=san{"成功"}else{"失败"},if lost>=5{"；单次损失≥5，请进行智力检定判断临时疯狂"}else{""})},
         "en"=>{let input=if args.is_empty(){card(&mut req.world,c)?.growth.clone().into_iter().collect::<Vec<_>>()}else{args.split(',').map(str::to_string).collect()};ensure!(input.len()<=100,"成长项目过多");let mut output=vec![];for s in input{let (name,explicit)=parse_skill(&s)?;let value=if let Some(v)=explicit{v}else{*card(&mut req.world,c)?.attrs.get(&name).context("技能不存在")?};let roll=rng.gen_range(1..=100);let add=if roll>value||roll>=96{rng.gen_range(1..=10)}else{0};if explicit.is_none(){let ca=card(&mut req.world,c)?;ca.attrs.insert(name.clone(),value+add);ca.growth.remove(&name);}output.push(format!("{name}：{roll}/{value} → +{add} = {}",value+add));}output.join("\n")},
         "ti"|"li"=>{let name=if cmd=="ti"{"临时疯狂"}else{"总结疯狂"};draw(name,&req.decks,req.world.rooms.get_mut(&room_id).unwrap(),0,&mut rng)?},
+        "drawreset" => {
+            ensure!(c.admin, "仅骰主或群管理员可以重置牌堆");
+            let room = req.world.rooms.get_mut(&room_id).unwrap();
+            if args.is_empty() {
+                room.deck_used.clear();
+                room.deck_versions.clear();
+                "已重置当前会话的所有牌堆".into()
+            } else {
+                ensure!(req.decks.contains_key(args), "牌堆不存在");
+                room.deck_used.remove(args);
+                room.deck_versions.remove(args);
+                format!("已重置当前会话的牌堆：{args}")
+            }
+        },
         "draw"|"drawh"=>{let out=draw(args,&req.decks,req.world.rooms.get_mut(&room_id).unwrap(),0,&mut rng)?;if cmd=="drawh"{result.private=Some(out);"进行了暗抽。".into()}else{out}},
         "ri"=>{let mut parts=args.split_whitespace();let name=parts.next().filter(|s|!s.is_empty()).unwrap_or(&c.user);let modifier=parts.next().unwrap_or("0").parse::<i64>()?;let n=dice::roll("1d20",20)?.total.checked_add(modifier).context("先攻数值溢出")?;req.world.rooms.get_mut(&room_id).unwrap().initiative.insert(name.into(),n);format!("{name} 先攻：{n}")},
         "init"=>{let rr=req.world.rooms.get_mut(&room_id).unwrap();if args=="clear"{ensure!(c.admin,"需要管理权限");rr.initiative.clear();"先攻已清空".into()}else{let mut v:Vec<_>=rr.initiative.iter().collect();v.sort_by(|a,b|b.1.cmp(a.1));v.iter().enumerate().map(|(i,(n,v))|format!("{}. {n}：{v}",i+1)).collect::<Vec<_>>().join("\n")}},
@@ -395,6 +412,11 @@ fn draw(
         !deck.entries.is_empty() && deck.entries.len() <= 10000,
         "牌堆为空或过大"
     );
+    let fingerprint = hex::encode(Sha256::digest(serde_json::to_vec(deck)?));
+    if room.deck_versions.get(name) != Some(&fingerprint) {
+        room.deck_used.remove(name);
+        room.deck_versions.insert(name.into(), fingerprint);
+    }
     let used = room.deck_used.entry(name.into()).or_default();
     let available: Vec<_> = deck
         .entries
@@ -402,7 +424,10 @@ fn draw(
         .enumerate()
         .filter(|(i, e)| e.weight > 0 && (!deck.without_replacement || !used.contains(i)))
         .collect();
-    ensure!(!available.is_empty(), "牌堆已抽完，请在管理端重置");
+    ensure!(
+        !available.is_empty(),
+        "牌堆已抽完，请用 .drawreset {name} 重置（需管理员）"
+    );
     let total: u64 = available.iter().map(|(_, e)| e.weight as u64).sum();
     let mut pick = rng.gen_range(0..total);
     let mut selected = available[0];

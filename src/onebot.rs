@@ -60,19 +60,13 @@ impl Hub {
         if text.is_empty() {
             return Ok(());
         }
-        let message = json!([{"type":"text","data":{"text":text}}]);
-        let (action, params) = if let Some(group) = group {
-            (
-                "send_group_msg",
-                json!({"group_id":group,"message":message}),
-            )
-        } else {
-            (
-                "send_private_msg",
-                json!({"user_id":user,"message":message}),
-            )
-        };
-        self.send(account, action, params).await?;
+        let packet = reply_packet(user, group, text)?;
+        self.send(
+            account,
+            packet["action"].as_str().unwrap(),
+            packet["params"].clone(),
+        )
+        .await?;
         Ok(())
     }
     pub async fn ingest(self: &Arc<Self>, app: Arc<App>, account: String, packet: Value) {
@@ -181,6 +175,18 @@ impl Hub {
             }
         });
     }
+}
+/// OneBot 11 API target IDs are JSON numbers, even though storage keys are strings.
+pub fn reply_packet(user: &str, group: Option<&str>, text: &str) -> Result<Value> {
+    let (action, key, target) = match group {
+        Some(group) => ("send_group_msg", "group_id", group),
+        None => ("send_private_msg", "user_id", user),
+    };
+    let id: i64 = target.parse().context("QQ目标ID必须是数字")?;
+    ensure!(id > 0, "QQ目标ID必须是正整数");
+    let mut params = json!({"message":[{"type":"text","data":{"text":text}}]});
+    params[key] = json!(id);
+    Ok(json!({"action":action,"params":params}))
 }
 pub fn id_string(v: &Value) -> String {
     v.as_str().map(str::to_string).unwrap_or_else(|| {

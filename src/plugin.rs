@@ -376,7 +376,7 @@ impl Manager {
                     "bot", "nn",
                 ],
             ),
-            ("decks", vec!["draw", "drawh", "ti", "li"]),
+            ("decks", vec!["draw", "drawh", "drawreset", "ti", "li"]),
             ("logger", vec!["log"]),
             ("replies", vec!["reply"]),
         ] {
@@ -708,12 +708,19 @@ pub async fn worker_main(_kind: &str) -> Result<()> {
             }
             Some("adapter.encode") => {
                 let p = &packet["params"];
-                let message = json!([{"type":"text","data":{"text":p["text"]}}]);
-                Ok(if p["group"].is_null() {
-                    json!({"action":"send_private_msg","params":{"user_id":p["user"],"message":message}})
-                } else {
-                    json!({"action":"send_group_msg","params":{"group_id":p["group"],"message":message}})
-                })
+                (|| {
+                    let user = p["user"].as_str().context("需要用户ID")?;
+                    let group = if p["group"].is_null() {
+                        None
+                    } else {
+                        Some(p["group"].as_str().context("群ID格式无效")?)
+                    };
+                    crate::onebot::reply_packet(
+                        user,
+                        group,
+                        p["text"].as_str().context("需要消息文本")?,
+                    )
+                })()
             }
             Some("health") => Ok(json!({"ok":true})),
             _ => Err(anyhow::anyhow!("未知插件方法")),
