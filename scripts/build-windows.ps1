@@ -1,6 +1,8 @@
 $ErrorActionPreference = 'Stop'
 flutter config --no-analytics --enable-windows-desktop
+$lockedDependencies = [System.IO.File]::ReadAllBytes((Join-Path $PWD 'ui/pubspec.lock'))
 flutter create --no-pub --project-name qianbian_ui --platforms windows,web ui
+[System.IO.File]::WriteAllBytes((Join-Path $PWD 'ui/pubspec.lock'), $lockedDependencies)
 Remove-Item -LiteralPath ui/test/widget_test.dart -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path ui/assets/fonts | Out-Null
 Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf' -OutFile ui/assets/fonts/NotoSansSC.ttf

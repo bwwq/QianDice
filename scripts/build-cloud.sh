@@ -2,7 +2,9 @@
 set -euo pipefail
 export PATH="/opt/flutter/bin:$PATH"
 flutter config --no-analytics --enable-linux-desktop --enable-web
+cp ui/pubspec.lock /tmp/qianbian-pubspec.lock
 flutter create --no-pub --project-name qianbian_ui --platforms linux,windows,web ui
+cp /tmp/qianbian-pubspec.lock ui/pubspec.lock
 rm -f ui/test/widget_test.dart
 mkdir -p ui/assets/fonts
 curl -fL 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf' -o ui/assets/fonts/NotoSansSC.ttf
