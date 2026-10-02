@@ -111,7 +111,12 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
 pub fn atomic_copy(from: &Path, to: &Path) -> Result<()> {
     let tmp = to.with_extension("partial");
     fs::copy(from, &tmp)?;
-    File::open(&tmp)?.sync_all()?;
+    // Windows FlushFileBuffers requires a writable handle.
+    OpenOptions::new()
+        .write(true)
+        .open(&tmp)?
+        .sync_all()
+        .context("同步保留的发布文件失败")?;
     fs::rename(tmp, to)?;
     Ok(())
 }
