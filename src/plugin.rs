@@ -588,6 +588,21 @@ impl Manager {
             None => false,
         }
     }
+    pub async fn uploader(&self) -> Option<String> {
+        let slots = self.slots.read().await;
+        for slot in slots.values() {
+            if slot
+                .manifest
+                .capabilities
+                .iter()
+                .any(|v| v == "group_file_upload")
+                && slot.enabled().await
+            {
+                return Some(slot.manifest.id.clone());
+            }
+        }
+        None
+    }
     pub async fn event(
         &self,
         event: &str,

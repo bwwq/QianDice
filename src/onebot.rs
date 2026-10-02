@@ -138,13 +138,32 @@ impl Hub {
                 return;
             }
         };
+        let log_scope = context.log_scope();
         tokio::spawn(async move {
             match app.process(context, text, false).await {
-                Ok(result) => {
+                Ok(mut result) => {
                     if let Some(secret) = result.private {
                         if app.reply(&account, &user, None, &secret).await.is_err() {
                             let _=app.reply(&account,&user,group.as_deref(),"暗骰结果未能确认送达，请检查好友或私聊权限；结果不会公开，也不会自动重新投掷。").await;
                             return;
+                        }
+                    }
+                    if let (Some(group), Some(session)) =
+                        (group.as_deref(), result.export_log.as_deref())
+                    {
+                        match crate::files::send_log(&app, &account, group, &log_scope, session)
+                            .await
+                        {
+                            Ok(true) => result.public.push_str("\n团录已作为群文件发送。"),
+                            Ok(false) => result.public.push_str(
+                                "\n团录已保存在千变；群文件上传接口尚未配置，可先从管理端导出。",
+                            ),
+                            Err(e) => {
+                                app.emit("warning", format!("群文件未确认：{e}"));
+                                result.public.push_str(
+                                    "\n群文件发送未确认，日志仍保存在千变，不会自动重发。",
+                                );
+                            }
                         }
                     }
                     if let Err(e) = app

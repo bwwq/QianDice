@@ -54,6 +54,7 @@ pub struct Room {
     pub coc_rule: u8,
     pub log: String,
     pub recording: bool,
+    pub last_log: String,
     pub initiative: BTreeMap<String, i64>,
     pub deck_used: BTreeMap<String, Vec<usize>>,
 }
@@ -65,6 +66,7 @@ impl Default for Room {
             coc_rule: 0,
             log: String::new(),
             recording: false,
+            last_log: String::new(),
             initiative: BTreeMap::new(),
             deck_used: BTreeMap::new(),
         }
@@ -349,10 +351,11 @@ pub fn execute(mut req: CommandRequest) -> Result<CommandResult> {
         "log"=>{let (sub,name)=args.split_once(' ').unwrap_or((args,""));let rr=req.world.rooms.get_mut(&room_id).unwrap();match sub{
             "on"=>{if rr.log.is_empty(){rr.log=if name.is_empty(){format!("团录-{}",chrono::Utc::now().format("%Y%m%d-%H%M%S"))}else{name.into()};}rr.recording=true;format!("开始记录：{}",rr.log)},
             "off"=>{rr.recording=false;"记录已暂停，可用 .log on 继续".into()},
-            "end"=>{ensure!(!rr.log.is_empty(),"没有进行中的日志");result.export_log=Some(rr.log.clone());let name=std::mem::take(&mut rr.log);rr.recording=false;format!("记录已结束：{name}；可在管理端导出")},
+            "end"=>{ensure!(!rr.log.is_empty(),"没有进行中的日志");result.export_log=Some(rr.log.clone());let name=std::mem::take(&mut rr.log);rr.last_log=name.clone();rr.recording=false;format!("记录已结束：{name}")},
             "stop"=>{rr.recording=false;rr.log.clear();"已停止记录，已有内容仍保留".into()},
+            "upload"=>{let name=if !name.is_empty(){name.to_string()}else if !rr.log.is_empty(){rr.log.clone()}else{rr.last_log.clone()};ensure!(!name.is_empty(),"请提供日志名称");result.export_log=Some(name.clone());format!("准备团录：{name}")},
             "info"=>format!("{}：{}",if rr.recording{"记录中"}else{"已暂停"},rr.log),
-            _=>bail!(".log on [名称] / off / end / stop / info")}},
+            _=>bail!(".log on [名称] / off / end / stop / info / upload [名称]")}},
         "reply"=>{ensure!(c.admin,"需要管理权限");let(k,v)=args.split_once('=').context("用法：.reply 指令=回复；空回复表示删除")?;ensure!(!k.is_empty()&&k.len()<80,"指令名称无效");if v.is_empty(){req.world.replies.remove(k);}else{req.world.replies.insert(k.into(),v.into());}"自定义回复已保存".into()},
         "rav"=>{let parts:Vec<_>=args.split_whitespace().collect();ensure!(parts.len()>=2,"用法：.rav 技能 @用户ID（双方读取当前群角色）");let name=skill(parts[0]);let other=parts.last().unwrap().trim_start_matches('@');let v1=*card(&mut req.world,c)?.attrs.get(&name).context("己方技能不存在")?;ensure!(req.world.players.get(other).is_some_and(|p|p.bindings.contains_key(&room_id)),"对方需要先在当前群绑定角色");let mut oc=c.clone();oc.user=other.into();let v2=*card(&mut req.world,&oc)?.attrs.get(&name).context("对方技能不存在")?;let r1=rng.gen_range(1..=100);let r2=rng.gen_range(1..=100);let g1=grade(r1,v1,room.coc_rule);let g2=grade(r2,v2,room.coc_rule);let cmp=(g1,v1).cmp(&(g2,v2));format!("{} {name} {r1}/{v1} {}\n{other} {name} {r2}/{v2} {}\n{}",c.user,grade_name(g1),grade_name(g2),match cmp{std::cmp::Ordering::Greater=>"己方胜出",std::cmp::Ordering::Less=>"对方胜出",_=>"平局"})},
         _ if cmd.starts_with("ra")=>{

@@ -40,7 +40,7 @@ pub fn serve(mut command: impl FnMut(Value, &mut Host<'_>) -> Result<Value>) -> 
         let result = match packet["method"].as_str().context("missing method")? {
             "initialize" => Ok(json!({"api":1})),
             "health" => Ok(json!({"ok":true})),
-            "command" | "event" => command(
+            "command" | "event" | "file.upload" => command(
                 packet["params"].clone(),
                 &mut Host {
                     reader: &mut reader,
