@@ -18,6 +18,8 @@ main:
           script: cargo test --all-targets
         - name: Rust构建
           script: cargo build --release
+        - name: 便携数据与插件契约
+          script: python3 tests/portable_contract.py target/release/qianbian
         - name: 保存锁文件与后台
           image: cnbcool/attachments:latest
           settings:

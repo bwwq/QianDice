@@ -1,0 +1,12 @@
+{
+  "id": "python-example",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "/usr/bin/python3",
+  "args": ["-u", "main.py"],
+  "commands": ["pyhello"],
+  "rules": [],
+  "dependencies": [],
+  "capabilities": ["dice", "storage"],
+  "config_schema": {}
+}

@@ -1,0 +1,12 @@
+{
+  "id": "rust-example",
+  "version": "1.0.0",
+  "api": 1,
+  "entry": "rust_plugin",
+  "args": [],
+  "commands": ["rusthello"],
+  "rules": [],
+  "dependencies": [],
+  "capabilities": ["dice"],
+  "config_schema": {}
+}

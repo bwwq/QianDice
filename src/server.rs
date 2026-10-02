@@ -36,7 +36,7 @@ impl App{
         let Some(command)=config.prefixes.iter().find_map(|p|text.trim().strip_prefix(p))else{return Ok(CommandResult{world,..Default::default()})};
         let key=format!("{scope}:{}",context.user);if !simulation{let mut rates=self.cooldowns.lock().await;if rates.get(&key).is_some_and(|t|t.elapsed()<Duration::from_millis(config.cooldown_ms)){anyhow::bail!("指令太快，请稍后重试")}rates.insert(key,Instant::now());if rates.len()>10000{rates.retain(|_,t|t.elapsed()<Duration::from_secs(60));}}
         let decks=self.decks()?;
-        let result=self.plugins.call_command(game::CommandRequest{context:context.clone(),command:command.trim().into(),world,decks},&self.store).await?;
+        let result=self.plugins.call_command(game::CommandRequest{context:context.clone(),command:game::normalize_command(command.trim()),world,decks,rules:self.rules()?},&self.store).await?;
         self.store.put("world",&scope,&serde_json::to_value(&result.world)?,revision)?;
         let after=result.world.rooms.get(&context.room()).cloned().unwrap_or_default();
         if !simulation&&!result.public.is_empty(){let session=if after.recording{Some(after.log)}else if current.recording{Some(current.log)}else{None};if let Some(session)=session{self.store.log(&scope,&session,"千变",&result.public)?;}}
@@ -44,6 +44,7 @@ impl App{
         Ok(result)
     }
     pub fn decks(&self)->Result<BTreeMap<String,game::Deck>>{let mut decks=game::built_in_decks();for e in std::fs::read_dir(self.paths.data.join("decks"))?{let e=e?;if e.path().extension().is_some_and(|x|x=="json"){let d:game::Deck=serde_json::from_slice(&std::fs::read(e.path())?)?;decks.insert(e.path().file_stem().unwrap().to_string_lossy().into(),d);}}Ok(decks)}
+    pub fn rules(&self)->Result<BTreeMap<String,game::RuleSpec>>{let mut rules=BTreeMap::new();for e in std::fs::read_dir(self.paths.data.join("rules"))?{let e=e?;if e.path().extension().is_some_and(|s|s=="json"){let r:game::RuleSpec=serde_json::from_slice(&std::fs::read(e.path())?)?;r.validate()?;rules.insert(r.id.clone(),r);}}Ok(rules)}
 }
 struct ApiError(anyhow::Error);
 impl<E:Into<anyhow::Error>> From<E> for ApiError{fn from(e:E)->Self{Self(e.into())}}
@@ -86,7 +87,7 @@ async fn config_set(State(app):State<Arc<App>>,Json(mut cfg):Json<Config>)->ApiR
     atomic_write(&app.paths.data.join("config/server.json"),&serde_json::to_vec_pretty(&cfg)?)?;*app.config.write().await=cfg;
     Ok(Json(json!({"ok":true,"message":"配置已保存。账号连接和监听地址在重启后台后应用；权限和前缀立即生效。"})))
 }
-fn ensure_config(c:&Config)->Result<()>{ensure!(!c.prefixes.is_empty()&&c.prefixes.iter().all(|p|!p.is_empty()&&p.len()<16),"前缀配置无效");c.listen.parse::<std::net::SocketAddr>()?;let mut ids=std::collections::HashSet::new();for a in &c.accounts{ensure!(ids.insert(&a.id),"账号标识重复");ensure!(a.id.bytes().all(|b|b.is_ascii_alphanumeric()||b==b'-'||b==b'_')&&!a.id.is_empty(),"账号标识只能包含字母数字下划线横线");ensure!(a.mode=="forward"||a.mode=="reverse","连接方式无效");if a.mode=="forward"{ensure!(a.url.starts_with("ws://")||a.url.starts_with("wss://"),"需要WebSocket地址")}}Ok(())}
+pub fn ensure_config(c:&Config)->Result<()>{ensure!(!c.prefixes.is_empty()&&c.prefixes.iter().all(|p|!p.is_empty()&&p.len()<16),"前缀配置无效");c.listen.parse::<std::net::SocketAddr>()?;let mut ids=std::collections::HashSet::new();for a in &c.accounts{ensure!(ids.insert(&a.id),"账号标识重复");ensure!(a.id.bytes().all(|b|b.is_ascii_alphanumeric()||b==b'-'||b==b'_')&&!a.id.is_empty(),"账号标识只能包含字母数字下划线横线");ensure!(a.mode=="forward"||a.mode=="reverse","连接方式无效");ensure!(a.token.len()>=16,"OneBot账号必须设置至少16字符访问令牌");if a.mode=="forward"{ensure!(a.url.starts_with("ws://")||a.url.starts_with("wss://"),"需要WebSocket地址")}}Ok(())}
 #[derive(Deserialize)]struct Simulation{context:ContextInfo,text:String}
 async fn simulate(State(app):State<Arc<App>>,Json(input):Json<Simulation>)->ApiResult<CommandResult>{Ok(Json(app.process(input.context,input.text,true).await?))}
 async fn worlds(State(app):State<Arc<App>>)->ApiResult<Value>{Ok(Json(json!(app.store.list("world")?)))}
@@ -100,7 +101,7 @@ fn safe_child(base:&std::path::Path,name:&str)->Result<std::path::PathBuf>{let r
 fn content_dir(app:&App,kind:&str)->Result<std::path::PathBuf>{ensure!(["rules","decks"].contains(&kind),"内容类型无效");Ok(app.paths.data.join(kind))}
 async fn content_list(State(app):State<Arc<App>>,Path(kind):Path<String>)->ApiResult<Value>{let dir=content_dir(&app,&kind)?;let mut items=vec![];for e in std::fs::read_dir(dir)?{let e=e?;if e.path().extension().is_some_and(|s|s=="json"){items.push(e.file_name().to_string_lossy().to_string());}}Ok(Json(json!(items)))}
 async fn content_get(State(app):State<Arc<App>>,Path((kind,name)):Path<(String,String)>)->ApiResult<Value>{Ok(Json(serde_json::from_slice(&std::fs::read(safe_child(&content_dir(&app,&kind)?,&name)?)?)?))}
-async fn content_put(State(app):State<Arc<App>>,Path((kind,name)):Path<(String,String)>,Json(v):Json<Value>)->ApiResult<Value>{let _gate=app.maintenance.write().await;if !name.ends_with(".json"){return Err(anyhow::anyhow!("文件名需要.json扩展名").into())}if kind=="decks"{let _:game::Deck=serde_json::from_value(v.clone())?;}atomic_write(&safe_child(&content_dir(&app,&kind)?,&name)?,&serde_json::to_vec_pretty(&v)?)?;Ok(Json(json!({"ok":true})))}
+async fn content_put(State(app):State<Arc<App>>,Path((kind,name)):Path<(String,String)>,Json(v):Json<Value>)->ApiResult<Value>{let _gate=app.maintenance.write().await;if !name.ends_with(".json"){return Err(anyhow::anyhow!("文件名需要.json扩展名").into())}if kind=="decks"{let _:game::Deck=serde_json::from_value(v.clone())?;}else{let rule:game::RuleSpec=serde_json::from_value(v.clone())?;rule.validate()?;}atomic_write(&safe_child(&content_dir(&app,&kind)?,&name)?,&serde_json::to_vec_pretty(&v)?)?;Ok(Json(json!({"ok":true})))}
 async fn content_delete(State(app):State<Arc<App>>,Path((kind,name)):Path<(String,String)>)->ApiResult<Value>{let _gate=app.maintenance.write().await;std::fs::remove_file(safe_child(&content_dir(&app,&kind)?,&name)?)?;Ok(Json(json!({"ok":true})))}
 async fn backups(State(app):State<Arc<App>>)->ApiResult<Value>{let list=std::fs::read_dir(app.paths.data.join("backups"))?.filter_map(|e|e.ok()).filter(|e|e.path().join("manifest.json").exists()).map(|e|e.file_name().to_string_lossy().to_string()).collect::<Vec<_>>();Ok(Json(json!(list)))}
 async fn backup(State(app):State<Arc<App>>)->ApiResult<Value>{let _gate=tokio::time::timeout(Duration::from_secs(35),app.maintenance.write()).await?;let id=app.store.backup(&app.paths.data)?;app.emit("backup",format!("备份完成：{id}"));Ok(Json(json!({"id":id})))}

@@ -69,6 +69,19 @@ pub fn validate_backup(path:&Path)->Result<Value> {
     if !files.contains_key("qianbian.sqlite"){bail!("备份缺少数据库")}
     for (name,hash) in files {
         let rel=Path::new(name);if rel.is_absolute()||rel.components().any(|c|!matches!(c,std::path::Component::Normal(_))){bail!("非法备份路径")}
-        let p=path.join(rel);if file_hash(&p)?!=hash.as_str().unwrap_or(""){bail!("备份校验失败：{name}")}
+        let p=path.join(rel);let base=std::fs::canonicalize(path)?;if !std::fs::canonicalize(&p)?.starts_with(&base)||std::fs::symlink_metadata(&p)?.file_type().is_symlink(){bail!("备份包含目录外文件")};if file_hash(&p)?!=hash.as_str().unwrap_or(""){bail!("备份校验失败：{name}")}
     } Ok(m)
+}
+pub fn recover_restore(data:&Path)->Result<()> {
+    let journal=data.join("restore-journal.json");if !journal.exists(){return Ok(())}
+    let value:Value=serde_json::from_slice(&fs::read(&journal)?)?;let id=value["id"].as_str().context("恢复日志无效")?;
+    if !id.bytes().all(|b|b.is_ascii_hexdigit()||b==b'-'){bail!("恢复日志标识无效")}
+    let stage=data.join("restore-staging");let old=data.join("backups").join(format!("restore-previous-{id}"));fs::create_dir_all(&old)?;
+    for name in ["qianbian.sqlite-wal","qianbian.sqlite-shm"]{let current=data.join(name);if current.exists(){if old.join(name).exists(){fs::remove_file(&current)?;}else{fs::rename(&current,old.join(name))?;}}}
+    for name in ["qianbian.sqlite","config","plugins","rules","decks","logs"]{
+        let next=stage.join(name);let current=data.join(name);
+        if next.exists(){if current.exists(){if old.join(name).exists(){bail!("恢复现场存在冲突：{name}，请保留目录并检查")};fs::rename(&current,old.join(name))?;}fs::rename(next,current)?;}
+        else if !current.exists(){bail!("恢复资源不完整：{name}")}
+    }
+    fs::remove_file(journal)?;if stage.exists(){fs::remove_dir(stage)?;}Ok(())
 }
