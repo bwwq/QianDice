@@ -55,6 +55,19 @@ def stop():
 
 try:
     start()
+    config_path = root / 'data/config/server.json'
+    config = json.loads(config_path.read_text(encoding='utf-8'))
+    config['listen'] = f'127.0.0.1:{port}'
+    config_path.write_text(json.dumps(config), encoding='utf-8')
+    readiness = subprocess.run([str(binary), '--root', str(root), 'ready'], capture_output=True, timeout=5)
+    assert readiness.returncode == 0, 'launcher did not authenticate the running backend'
+    token_path = root / 'data/config/admin-token.txt'
+    token_path.write_text('wrong-token', encoding='utf-8')
+    try:
+        mismatch = subprocess.run([str(binary), '--root', str(root), 'ready'], capture_output=True, timeout=5)
+        assert mismatch.returncode != 0, 'launcher accepted a different backend identity'
+    finally:
+        token_path.write_text(token, encoding='utf-8')
     try:
         api('/status', auth=False)
         raise AssertionError('Unauthenticated access accepted')

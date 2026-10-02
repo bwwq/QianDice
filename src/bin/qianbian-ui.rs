@@ -1,14 +1,19 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 use anyhow::{Context, Result, ensure};
+use clap::Parser;
 use sha2::{Digest, Sha256};
 use std::{
     fs,
-    io::{Read, Write},
     path::PathBuf,
     process::{Command, Stdio},
     time::Duration,
 };
 include!(concat!(env!("OUT_DIR"), "/payload.rs"));
+#[derive(Parser)]
+struct Options {
+    #[arg(long)]
+    data_dir: Option<PathBuf>,
+}
 fn main() {
     if let Err(e) = run() {
         eprintln!("千变启动失败：{e:#}");
@@ -27,7 +32,8 @@ fn run() -> Result<()> {
         !PAYLOAD.is_empty(),
         "此启动器未嵌入桌面资源，请使用Windows UI正式发布包"
     );
-    let paths = qianbian::portable::Paths::discover(None, None)?;
+    let options = Options::parse();
+    let paths = qianbian::portable::Paths::discover(options.data_dir, None)?;
     let hash = hex::encode(Sha256::digest(PAYLOAD));
     let dir = paths.runtime.join(format!("ui-{}", &hash[..16]));
     let launcher_lock = fs::OpenOptions::new()
@@ -96,16 +102,9 @@ fn run() -> Result<()> {
         fs::rename(stage, &dir)?;
     }
     fs2::FileExt::unlock(&launcher_lock)?;
-    let config = qianbian::portable::load_config(&paths)?;
-    let address: std::net::SocketAddr = config.listen.parse()?;
-    let connect = if address.ip().is_unspecified() {
-        std::net::SocketAddr::new("127.0.0.1".parse()?, address.port())
-    } else {
-        address
-    };
-    let endpoint = format!("http://{connect}");
-    let running =
-        std::net::TcpStream::connect_timeout(&connect, Duration::from_millis(500)).is_ok();
+    let endpoint = format!("http://{}", qianbian::launcher::address(&paths)?);
+    let running = qianbian::launcher::ready(&paths)?;
+    let mut backend = None;
     if !running {
         let log = fs::OpenOptions::new()
             .create(true)
@@ -125,15 +124,19 @@ fn run() -> Result<()> {
             use std::os::windows::process::CommandExt;
             command.creation_flags(0x08000000 | 0x00000008);
         }
-        command.spawn()?;
+        backend = Some(command.spawn()?);
     }
     let mut ready = false;
     for _ in 0..100 {
-        if std::net::TcpStream::connect_timeout(&connect, Duration::from_millis(200)).is_ok()
-            && paths.data.join("config/admin-token.txt").exists()
-        {
+        if qianbian::launcher::ready(&paths).unwrap_or(false) {
             ready = true;
             break;
+        }
+        if let Some(child) = backend.as_mut() {
+            ensure!(
+                child.try_wait()?.is_none(),
+                "后台启动失败，请查看 data/logs/launcher.log"
+            );
         }
         std::thread::sleep(Duration::from_millis(100));
     }

@@ -6,6 +6,7 @@ flutter create --no-pub --project-name qianbian_ui --platforms windows,web ui
 Remove-Item -LiteralPath ui/test/widget_test.dart -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path ui/assets/fonts | Out-Null
 Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf' -OutFile ui/assets/fonts/NotoSansSC.ttf
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt' -OutFile ui/assets/fonts/OFL.txt
 Push-Location ui
 flutter pub get --enforce-lockfile
 if ($LASTEXITCODE) { throw 'Flutter依赖解析失败' }

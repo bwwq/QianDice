@@ -25,6 +25,7 @@ struct Cli {
 enum Action {
     Serve,
     Endpoint,
+    Ready,
     Worker {
         #[arg(long)]
         kind: String,
@@ -53,12 +54,11 @@ async fn main() -> Result<()> {
         .with_writer(std::io::stderr)
         .init();
     let paths = Paths::discover(cli.data_dir, cli.root)?;
-    if matches!(cli.command, Some(Action::Endpoint)) {
-        let config = load_config(&paths)?;
-        let mut address: std::net::SocketAddr = config.listen.parse()?;
-        if address.ip().is_unspecified() {
-            address.set_ip("127.0.0.1".parse()?);
+    if matches!(cli.command, Some(Action::Endpoint | Action::Ready)) {
+        if matches!(cli.command, Some(Action::Ready)) {
+            ensure!(qianbian::launcher::ready(&paths)?, "后台尚未就绪");
         }
+        let address = qianbian::launcher::address(&paths)?;
         println!("http://{address}");
         return Ok(());
     }

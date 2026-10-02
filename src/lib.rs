@@ -1,6 +1,7 @@
 pub mod dice;
 pub mod files;
 pub mod game;
+pub mod launcher;
 pub mod onebot;
 pub mod plugin;
 pub mod portable;

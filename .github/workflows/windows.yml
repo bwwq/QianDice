@@ -8,18 +8,20 @@ permissions:
 jobs:
   windows:
     runs-on: windows-2022
+    env:
+      PYTHONUTF8: '1'
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Rust MSVC
-        run: rustup update stable --no-self-update
+        run: rustup default 1.90.0
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.6'
           channel: stable
           cache: true
       - name: Stable core contracts
-        run: cargo test --all-targets
+        run: cargo test --locked --all-targets
       - name: Build portable UI
         shell: pwsh
         run: ./scripts/build-windows.ps1

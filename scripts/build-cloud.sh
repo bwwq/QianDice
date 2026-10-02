@@ -8,6 +8,7 @@ cp /tmp/qianbian-pubspec.lock ui/pubspec.lock
 rm -f ui/test/widget_test.dart
 mkdir -p ui/assets/fonts
 curl -fL 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf' -o ui/assets/fonts/NotoSansSC.ttf
+curl -fL 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt' -o ui/assets/fonts/OFL.txt
 (cd ui && flutter pub get --enforce-lockfile && flutter analyze --no-fatal-infos && flutter build web --release --no-web-resources-cdn && flutter build linux --release)
 cp -a ui/build/web/. assets/web/
 cargo test --locked --all-targets

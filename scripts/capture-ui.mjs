@@ -20,7 +20,7 @@ try {
   }
   if (!token) throw new Error('Visual verification backend did not start');
   browser = await chromium.launch({headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
-  const context = await browser.newContext({viewport: {width: 1440, height: 960}, colorScheme: 'dark'});
+  const context = await browser.newContext({viewport: {width: 1440, height: 960}, colorScheme: 'dark', locale: 'zh-CN'});
   await context.request.post('http://127.0.0.1:19610/api/v1/login', {data: {token}});
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));

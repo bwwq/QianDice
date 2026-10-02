@@ -489,12 +489,6 @@ impl Manager {
                     bail!("等待旧请求结束超时，保留旧版本")
                 }
             };
-        if let Some(old) = slots.get(&manifest.id) {
-            if let Err(e) = old.stop().await {
-                let _ = slot.stop().await;
-                return Err(e);
-            }
-        }
         if self
             .paths
             .data
@@ -504,13 +498,27 @@ impl Manager {
         {
             slot.stop().await?;
         }
-        slots.insert(manifest.id.clone(), slot);
         let active = self.paths.data.join("plugins").join(&manifest.id);
-        std::fs::create_dir_all(&active)?;
-        crate::portable::atomic_write(
-            &active.join("active.json"),
-            &serde_json::to_vec(&manifest.version)?,
-        )?;
+        let active_file = active.join("active.json");
+        let previous = std::fs::read(&active_file).ok();
+        if let Err(error) =
+            crate::portable::atomic_write(&active_file, &serde_json::to_vec(&manifest.version)?)
+        {
+            let _ = slot.stop().await;
+            return Err(error);
+        }
+        if let Some(old) = slots.get(&manifest.id) {
+            if let Err(error) = old.stop().await {
+                let _ = slot.stop().await;
+                if let Some(previous) = previous {
+                    crate::portable::atomic_write(&active_file, &previous)?;
+                } else {
+                    std::fs::remove_file(&active_file)?;
+                }
+                return Err(error);
+            }
+        }
+        slots.insert(manifest.id.clone(), slot);
         Ok(())
     }
     pub async fn call_command(

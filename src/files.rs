@@ -13,6 +13,12 @@ pub struct GroupFileRequest {
     pub name: String,
     pub content_type: String,
 }
+struct TemporaryFile(PathBuf);
+impl Drop for TemporaryFile {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
 
 pub async fn send_log(
     app: &App,
@@ -28,6 +34,7 @@ pub async fn send_log(
     let directory = app.paths.runtime.join("transfers");
     std::fs::create_dir_all(&directory)?;
     let path = directory.join(format!("{}.txt", uuid::Uuid::new_v4()));
+    let _cleanup = TemporaryFile(path.clone());
     let mut file = std::fs::File::create(&path)?;
     let mut after = 0;
     let mut bytes = 0usize;
@@ -73,7 +80,6 @@ pub async fn send_log(
             &app.store,
         )
         .await;
-    let _ = std::fs::remove_file(&path);
     let response = result?;
     ensure!(
         response["confirmed"] == true,
