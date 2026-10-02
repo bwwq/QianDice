@@ -32,15 +32,15 @@ impl Hub{
         let group=if packet["message_type"]=="group"{Some(id_string(&packet["group_id"]))}else{None};
         let role=packet["sender"]["role"].as_str().unwrap_or("");let name=packet["sender"]["card"].as_str().filter(|s|!s.is_empty()).or_else(||packet["sender"]["nickname"].as_str()).unwrap_or(&user).to_string();
         let context=ContextInfo{platform:"qq".into(),account:account.clone(),user:user.clone(),group:group.clone(),name,admin:role=="owner"||role=="admin"};
-        let text=message_text(&packet["message"]);
-        let hub=self.clone();tokio::spawn(async move{
+        let text=match app.plugins.call_named("onebot","adapter.decode",packet.clone(),&app.store).await{Ok(v)=>v["text"].as_str().unwrap_or("").to_owned(),Err(e)=>{app.emit("warning",format!("QQ适配失败：{e}"));return}};
+        tokio::spawn(async move{
             match app.process(context,text,false).await{
                 Ok(result)=>{
                     if let Some(secret)=result.private{
-                        if hub.reply(&account,&user,None,&secret).await.is_err(){let _=hub.reply(&account,&user,group.as_deref(),"暗骰结果未能确认送达，请检查好友或私聊权限；结果不会公开，也不会自动重新投掷。").await;return}
+                        if app.reply(&account,&user,None,&secret).await.is_err(){let _=app.reply(&account,&user,group.as_deref(),"暗骰结果未能确认送达，请检查好友或私聊权限；结果不会公开，也不会自动重新投掷。").await;return}
                     }
-                    if let Err(e)=hub.reply(&account,&user,group.as_deref(),&result.public).await{app.emit("warning",format!("回复发送失败：{e}"));}
-                },Err(e)=>{let _=hub.reply(&account,&user,group.as_deref(),&format!("未完成：{e}")).await;}
+                    if let Err(e)=app.reply(&account,&user,group.as_deref(),&result.public).await{app.emit("warning",format!("回复发送失败：{e}"));}
+                },Err(e)=>{let _=app.reply(&account,&user,group.as_deref(),&format!("未完成：{e}")).await;}
             }
         });
     }

@@ -34,7 +34,7 @@ def serve(handler):
                 result = {'api': 1}
             elif method == 'health':
                 result = {'ok': True}
-            elif method == 'command':
+            elif method in ('command', 'event'):
                 result = handler(packet.get('params', {}), host)
             else:
                 raise ValueError(f'Unsupported method: {method}')

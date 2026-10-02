@@ -33,10 +33,11 @@ impl App{
         let scope=context.scope();let(value,revision)=self.store.get("world",&scope)?;let world:World=if value.is_null(){World::default()}else{serde_json::from_value(value)?};
         let current=world.rooms.get(&context.room()).cloned().unwrap_or_default();
         if current.recording&&!simulation{self.store.log(&scope,&current.log,&context.name,&text)?;}
-        let Some(command)=config.prefixes.iter().find_map(|p|text.trim().strip_prefix(p))else{return Ok(CommandResult{world,..Default::default()})};
+        let extra=self.plugins.event("message",json!({"event":"message","context":context,"text":text}),&self.store).await;
+        let Some(command)=config.prefixes.iter().find_map(|p|text.trim().strip_prefix(p))else{let mut result=CommandResult{world,..Default::default()};merge_replies(&mut result,extra);return Ok(result)};
         let key=format!("{scope}:{}",context.user);if !simulation{let mut rates=self.cooldowns.lock().await;if rates.get(&key).is_some_and(|t|t.elapsed()<Duration::from_millis(config.cooldown_ms)){anyhow::bail!("指令太快，请稍后重试")}rates.insert(key,Instant::now());if rates.len()>10000{rates.retain(|_,t|t.elapsed()<Duration::from_secs(60));}}
         let decks=self.decks()?;
-        let result=self.plugins.call_command(game::CommandRequest{context:context.clone(),command:game::normalize_command(command.trim()),world,decks,rules:self.rules()?},&self.store).await?;
+        let mut result=self.plugins.call_command(game::CommandRequest{context:context.clone(),command:game::normalize_command(command.trim()),world,decks,rules:self.rules()?},&self.store).await?;merge_replies(&mut result,extra);
         self.store.put("world",&scope,&serde_json::to_value(&result.world)?,revision)?;
         let after=result.world.rooms.get(&context.room()).cloned().unwrap_or_default();
         if !simulation&&!result.public.is_empty(){let session=if after.recording{Some(after.log)}else if current.recording{Some(current.log)}else{None};if let Some(session)=session{self.store.log(&scope,&session,"千变",&result.public)?;}}
@@ -45,7 +46,25 @@ impl App{
     }
     pub fn decks(&self)->Result<BTreeMap<String,game::Deck>>{let mut decks=game::built_in_decks();for e in std::fs::read_dir(self.paths.data.join("decks"))?{let e=e?;if e.path().extension().is_some_and(|x|x=="json"){let d:game::Deck=serde_json::from_slice(&std::fs::read(e.path())?)?;decks.insert(e.path().file_stem().unwrap().to_string_lossy().into(),d);}}Ok(decks)}
     pub fn rules(&self)->Result<BTreeMap<String,game::RuleSpec>>{let mut rules=BTreeMap::new();for e in std::fs::read_dir(self.paths.data.join("rules"))?{let e=e?;if e.path().extension().is_some_and(|s|s=="json"){let r:game::RuleSpec=serde_json::from_slice(&std::fs::read(e.path())?)?;r.validate()?;rules.insert(r.id.clone(),r);}}Ok(rules)}
+    pub async fn reply(&self,account:&str,user:&str,group:Option<&str>,text:&str)->Result<()>{if text.is_empty(){return Ok(())}let encoded=self.plugins.call_named("onebot","adapter.encode",json!({"user":user,"group":group,"text":text}),&self.store).await?;self.hub.send(account,encoded["action"].as_str().context("适配插件未返回action")?,encoded["params"].clone()).await?;Ok(())}
+    pub async fn run_timers(self:Arc<Self>){
+        let mut interval=tokio::time::interval(Duration::from_secs(1));let mut shutdown=self.shutdown.subscribe();
+        loop{tokio::select!{_=shutdown.changed()=>break,_=interval.tick()=>{}}
+            let _gate=self.maintenance.read().await;let _lane=self.dispatch.lock().await;
+            let entries=match self.store.list("schedule"){Ok(v)=>v,Err(e)=>{self.emit("warning",format!("任务列表读取失败：{e}"));continue}};
+            for entry in entries{let mut job=entry["value"].clone();if job["enabled"]!=true||job["state"]!="pending"||job["at"].as_i64().unwrap_or(i64::MAX)>chrono::Utc::now().timestamp(){continue}
+                let plugin=job["plugin"].as_str().unwrap_or("").to_owned();if !self.plugins.active(&plugin).await{continue}
+                let key=entry["key"].as_str().unwrap_or("");let old=entry["revision"].as_i64().unwrap_or(0);job["state"]=json!("running");let revision=match self.store.put("schedule",key,&job,old){Ok(v)=>v,Err(_)=>continue};
+                let call=self.plugins.call_named(&plugin,"event",json!({"event":"timer","context":job["context"],"id":job["id"],"payload":job["payload"]}),&self.store).await;
+                match call{Ok(reply)=>{if let Ok(ctx)=serde_json::from_value::<ContextInfo>(job["context"].clone()){if ctx.platform!="simulation"{let secret=reply["private"].as_str();if let Some(text)=secret{if self.reply(&ctx.account,&ctx.user,None,text).await.is_err(){self.emit("warning","定时任务私聊发送未确认，不公开结果".into());}}if let Some(text)=reply["public"].as_str(){if let Err(e)=self.reply(&ctx.account,&ctx.user,ctx.group.as_deref(),text).await{self.emit("warning",format!("定时回复未确认：{e}"));}}}}
+                    let every=job["every"].as_i64().unwrap_or(0);job["enabled"]=json!(every>0);job["state"]=json!("pending");job["at"]=json!(chrono::Utc::now().timestamp()+every);},
+                    Err(e)=>{job["enabled"]=json!(false);job["state"]=json!("failed");job["error"]=json!(e.to_string());self.emit("warning",format!("定时任务 {key} 已停用，不自动重试"));}}
+                let _=self.store.put("schedule",key,&job,revision);
+            }
+        }
+    }
 }
+fn merge_replies(result:&mut CommandResult,extra:Vec<Value>){for value in extra{if let Some(text)=value["public"].as_str(){if !result.public.is_empty(){result.public.push('\n')}result.public.push_str(text);}if let Some(text)=value["private"].as_str(){let private=result.private.get_or_insert_with(String::new);if !private.is_empty(){private.push('\n')}private.push_str(text);}}}
 struct ApiError(anyhow::Error);
 impl<E:Into<anyhow::Error>> From<E> for ApiError{fn from(e:E)->Self{Self(e.into())}}
 impl IntoResponse for ApiError{fn into_response(self)->Response{(StatusCode::BAD_REQUEST,Json(json!({"error":self.0.to_string()}))).into_response()}}
@@ -55,7 +74,8 @@ pub fn router(app:Arc<App>)->Router {
     let protected=Router::new().route("/status",get(status)).route("/config",get(config_get).put(config_set)).route("/simulate",post(simulate))
         .route("/worlds",get(worlds)).route("/world",get(world_get).put(world_set)).route("/plugins",get(plugins)).route("/plugins/load",post(plugin_load))
         .route("/plugins/:id/:action",post(plugin_action)).route("/content/:kind",get(content_list)).route("/content/:kind/:name",get(content_get).put(content_put).delete(content_delete))
-        .route("/backups",get(backups).post(backup)).route("/logs",get(logs)).route("/export",get(export)).route("/events",get(events)).route("/shutdown",post(shutdown))
+        .route("/backups",get(backups).post(backup)).route("/logs",get(logs)).route("/sessions",get(sessions)).route("/export",get(export)).route("/events",get(events)).route("/shutdown",post(shutdown))
+        .route("/plugin-config/:id",get(plugin_config_get).put(plugin_config_set))
         .route("/logout",post(logout)).route("/openapi.json",get(openapi)).route_layer(middleware::from_fn_with_state(app.clone(),auth));
     Router::new().nest("/api/v1",protected).route("/api/v1/login",post(login)).route("/onebot/:account",get(reverse)).fallback(get(asset)).with_state(app)
         .layer(axum::extract::DefaultBodyLimit::max(4*1024*1024))
@@ -97,6 +117,9 @@ async fn world_set(State(app):State<Arc<App>>,Json(v):Json<Value>)->ApiResult<Va
 async fn plugins(State(app):State<Arc<App>>)->Json<Value>{Json(json!(app.plugins.list().await))}
 async fn plugin_load(State(app):State<Arc<App>>,Json(v):Json<Value>)->ApiResult<Value>{let _gate=app.maintenance.read().await;let p=safe_child(&app.paths.data.join("plugins"),v["path"].as_str().context("缺少插件清单路径")?)?;if !p.file_name().is_some_and(|s|s=="plugin.json"){return Err(anyhow::anyhow!("请选择plugin.json").into())}app.plugins.load(&p).await?;Ok(Json(json!({"ok":true})))}
 async fn plugin_action(State(app):State<Arc<App>>,Path((id,action)):Path<(String,String)>)->ApiResult<Value>{let _gate=app.maintenance.read().await;match action.as_str(){"enable"=>app.plugins.enable(&id).await?,"disable"=>app.plugins.disable(&id).await?,_=>return Err(anyhow::anyhow!("操作不存在").into())}Ok(Json(json!({"ok":true})))}
+async fn plugin_config_get(State(app):State<Arc<App>>,Path(id):Path<String>)->ApiResult<Value>{let(v,r)=app.store.get("plugin-config",&id)?;Ok(Json(json!({"value":v,"revision":r})))}
+async fn plugin_config_set(State(app):State<Arc<App>>,Path(id):Path<String>,Json(v):Json<Value>)->ApiResult<Value>{let _gate=app.maintenance.read().await;let list=app.plugins.list().await;let plugin=list.iter().find(|p|p["manifest"]["id"]==id).context("插件不存在")?;validate_config_schema(&plugin["manifest"]["config_schema"],&v["value"])?;let r=app.store.put("plugin-config",&id,&v["value"],v["revision"].as_i64().context("缺少配置版本")?)?;Ok(Json(json!({"revision":r})))}
+fn validate_config_schema(schema:&Value,value:&Value)->Result<()>{ensure!(value.is_object(),"配置必须是对象");if let Some(required)=schema["required"].as_array(){for key in required{ensure!(value.get(key.as_str().unwrap_or("")).is_some(),"缺少配置项 {key}");}}if let Some(properties)=schema["properties"].as_object(){for(key,field)in properties{if let Some(v)=value.get(key){let valid=match field["type"].as_str(){Some("boolean")=>v.is_boolean(),Some("integer")=>v.is_i64(),Some("number")=>v.is_number(),Some("string")=>v.is_string(),_=>true};ensure!(valid,"配置项 {key} 类型不正确");if let Some(options)=field["enum"].as_array(){ensure!(options.contains(v),"配置项 {key} 不在允许值中");}if let Some(n)=v.as_f64(){if let Some(min)=field["minimum"].as_f64(){ensure!(n>=min,"配置项 {key} 小于下限")}if let Some(max)=field["maximum"].as_f64(){ensure!(n<=max,"配置项 {key} 超出上限")}}}}}Ok(())}
 fn safe_child(base:&std::path::Path,name:&str)->Result<std::path::PathBuf>{let rel=std::path::Path::new(name);ensure!(!rel.is_absolute()&&rel.components().all(|c|matches!(c,std::path::Component::Normal(_))),"路径无效");let full=base.join(rel);let parent=if full.exists(){full.clone()}else{full.parent().context("缺少父目录")?.to_path_buf()};ensure!(std::fs::canonicalize(parent)?.starts_with(std::fs::canonicalize(base)?),"路径越界");Ok(full)}
 fn content_dir(app:&App,kind:&str)->Result<std::path::PathBuf>{ensure!(["rules","decks"].contains(&kind),"内容类型无效");Ok(app.paths.data.join(kind))}
 async fn content_list(State(app):State<Arc<App>>,Path(kind):Path<String>)->ApiResult<Value>{let dir=content_dir(&app,&kind)?;let mut items=vec![];for e in std::fs::read_dir(dir)?{let e=e?;if e.path().extension().is_some_and(|s|s=="json"){items.push(e.file_name().to_string_lossy().to_string());}}Ok(Json(json!(items)))}
@@ -107,7 +130,20 @@ async fn backups(State(app):State<Arc<App>>)->ApiResult<Value>{let list=std::fs:
 async fn backup(State(app):State<Arc<App>>)->ApiResult<Value>{let _gate=tokio::time::timeout(Duration::from_secs(35),app.maintenance.write()).await?;let id=app.store.backup(&app.paths.data)?;app.emit("backup",format!("备份完成：{id}"));Ok(Json(json!({"id":id})))}
 #[derive(Deserialize)]struct LogQuery{scope:String,session:String,#[serde(default)]after:i64,#[serde(default)]format:String}
 async fn logs(State(app):State<Arc<App>>,Query(q):Query<LogQuery>)->ApiResult<Value>{Ok(Json(json!(app.store.logs(&q.scope,&q.session,q.after,200)?)))}
-async fn export(State(app):State<Arc<App>>,Query(q):Query<LogQuery>)->Result<Response,ApiError>{let rows=app.store.logs(&q.scope,&q.session,0,10000)?;let text=rows.iter().map(|r|format!("[{}] {}: {}",r["time"].as_str().unwrap_or(""),r["actor"].as_str().unwrap_or(""),r["text"].as_str().unwrap_or(""))).collect::<Vec<_>>().join("\n");let (mime,body)=match q.format.as_str(){"html"=>("text/html; charset=utf-8",format!("<!doctype html><meta charset=utf-8><title>千变跑团记录</title><pre>{}</pre>",text.replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;"))),"json"=>("application/json",serde_json::to_string_pretty(&rows)?),_=>("text/plain; charset=utf-8",text)};Ok(([(header::CONTENT_TYPE,mime),(header::CONTENT_DISPOSITION,"attachment; filename=log-export")],body).into_response())}
+async fn sessions(State(app):State<Arc<App>>)->ApiResult<Value>{Ok(Json(json!(app.store.sessions()?)))}
+async fn export(State(app):State<Arc<App>>,Query(q):Query<LogQuery>)->Result<Response,ApiError>{
+    let kind=q.format.clone();let mime=match kind.as_str(){"html"=>"text/html; charset=utf-8","json"=>"application/json",_=>"text/plain; charset=utf-8"};
+    let start=match kind.as_str(){"html"=>"<!doctype html><meta charset=utf-8><title>千变跑团记录</title><pre>","json"=>"[",_=>""}.to_owned();
+    let stream=futures_util::stream::try_unfold((app,q,0i64,0u8,true),move |(app,q,mut after,phase,mut first)|{let kind=kind.clone();let start=start.clone();async move{
+        if phase==2{return Ok::<_,std::io::Error>(None)}
+        if phase==0{return Ok(Some((start,(app,q,after,1,first))))}
+        let rows=app.store.logs(&q.scope,&q.session,after,500).map_err(std::io::Error::other)?;
+        if rows.is_empty(){let tail=match kind.as_str(){"html"=>"</pre>","json"=>"]",_=>""};return Ok(Some((tail.to_owned(),(app,q,after,2,first))))}
+        let mut body=String::new();for row in rows{after=row["id"].as_i64().unwrap_or(after);if kind=="json"{if !first{body.push(',')}body.push_str(&row.to_string());first=false;}else{let line=format!("[{}] {}: {}\n",row["time"].as_str().unwrap_or(""),row["actor"].as_str().unwrap_or(""),row["text"].as_str().unwrap_or(""));body.push_str(&if kind=="html"{line.replace('&',"&amp;").replace('<',"&lt;").replace('>',"&gt;")}else{line});}}
+        Ok(Some((body,(app,q,after,1,first))))
+    }});
+    Ok(([(header::CONTENT_TYPE,mime),(header::CONTENT_DISPOSITION,"attachment; filename=log-export")],axum::body::Body::from_stream(stream)).into_response())
+}
 async fn events(State(app):State<Arc<App>>)->impl IntoResponse{let stream=tokio_stream::wrappers::BroadcastStream::new(app.events.subscribe()).filter_map(|v|async move{v.ok().map(|n|Ok::<_,std::convert::Infallible>(Event::default().event("notice").json_data(n).unwrap()))});Sse::new(stream).keep_alive(KeepAlive::default())}
 async fn shutdown(State(app):State<Arc<App>>)->Json<Value>{let _=app.shutdown.send(true);Json(json!({"ok":true}))}
 async fn openapi()->Json<Value>{Json(json!({"openapi":"3.1.0","info":{"title":"千变管理 API","version":"1"},"servers":[{"url":"/api/v1"}],"paths":{

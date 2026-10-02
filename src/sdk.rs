@@ -9,7 +9,7 @@ impl Host<'_>{
 pub fn serve(mut command:impl FnMut(Value,&mut Host<'_>)->Result<Value>)->Result<()>{
     let stdin=std::io::stdin();let stdout=std::io::stdout();let mut reader=stdin.lock();let mut writer=stdout.lock();
     loop{let mut line=String::new();if reader.read_line(&mut line)?==0{break}let packet:Value=serde_json::from_str(&line)?;
-        let result=match packet["method"].as_str().context("missing method")?{"initialize"=>Ok(json!({"api":1})),"health"=>Ok(json!({"ok":true})),"command"=>command(packet["params"].clone(),&mut Host{reader:&mut reader,writer:&mut writer,sequence:0}),other=>Err(anyhow::anyhow!("unsupported method {other}"))};
+        let result=match packet["method"].as_str().context("missing method")?{"initialize"=>Ok(json!({"api":1})),"health"=>Ok(json!({"ok":true})),"command"|"event"=>command(packet["params"].clone(),&mut Host{reader:&mut reader,writer:&mut writer,sequence:0}),other=>Err(anyhow::anyhow!("unsupported method {other}"))};
         let reply=match result{Ok(v)=>json!({"jsonrpc":"2.0","id":packet["id"],"result":v}),Err(e)=>json!({"jsonrpc":"2.0","id":packet["id"],"error":{"code":-32000,"message":e.to_string()}})};
         serde_json::to_writer(&mut writer,&reply)?;writeln!(writer)?;writer.flush()?;
     }Ok(())

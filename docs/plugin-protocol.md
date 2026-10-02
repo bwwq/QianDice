@@ -17,8 +17,14 @@
 | `dice.roll` | `dice` | `{expression}` → `{expression,total,detail}` |
 | `storage.get` | `storage` | `{key}` → `{value,revision}` |
 | `storage.put` | `storage` | `{key,value,revision}` → `{revision}`，版本不一致失败 |
+| `config.get` | 无额外能力 | `{}` → `{value,revision}`，管理页维护的插件配置 |
+| `message.reply` | `reply` | `{text,private:false}` → `{queued:true}`，当前调用完成后由宿主发送 |
+| `schedule.put` | `schedule` | `{id,delay_seconds,every_seconds:0,payload}`，按当前会话创建任务 |
+| `schedule.cancel` | `schedule` | `{id}`，取消当前插件自己的任务 |
 
-存储限制在当前插件命名空间。命令回复由返回值交给宿主发送，暗骰私聊失败不回退到群。任意外部事件订阅、宿主任意目标发信和持久定时任务接口仍待扩展，不应在第三方插件中假定存在。
+存储限制在当前插件命名空间。命令回复由返回值交给宿主发送，暗骰私聊失败不回退到群。清单 `events:["message"]` 可订阅消息，入口为 `event`；定时任务也调用 `event`，参数含 `event:"timer"`、原会话 `context`、`id` 和 `payload`。Python/Rust SDK将这两种入口交给同一个处理函数，以参数的 `event` 区分。
+
+任务执行前持久标记为running；崩溃或失败的任务不自动重放。重复任务成功后才计算下次时间，停用插件时不派发任务。message.reply只允许当前会话或当前用户，不能伪造其他会话上下文。模拟会话的定时任务不会向QQ发送结果。
 
 ## 清单和部署
 

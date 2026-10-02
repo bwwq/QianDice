@@ -43,6 +43,7 @@ impl Store {
         let rows=q.query_map(params![scope,session,after,limit.clamp(1,10000)],|r|Ok(json!({"id":r.get::<_,i64>(0)?,"time":r.get::<_,String>(1)?,"actor":r.get::<_,String>(2)?,"text":r.get::<_,String>(3)?})))?;
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
     }
+    pub fn sessions(&self)->Result<Vec<Value>>{let c=self.conn.lock().unwrap();let mut q=c.prepare("SELECT scope,session,COUNT(*),MIN(time),MAX(time) FROM logs GROUP BY scope,session ORDER BY MAX(id) DESC LIMIT 500")?;let rows=q.query_map([],|r|Ok(json!({"scope":r.get::<_,String>(0)?,"session":r.get::<_,String>(1)?,"count":r.get::<_,i64>(2)?,"started":r.get::<_,String>(3)?,"updated":r.get::<_,String>(4)?})))?;Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)}
     // Caller holds the global maintenance write gate throughout this operation.
     pub fn backup(&self,data:&Path)->Result<String> {
         let id=format!("{}-{}",chrono::Utc::now().format("%Y%m%d-%H%M%S"),&uuid::Uuid::new_v4().to_string()[..8]);
