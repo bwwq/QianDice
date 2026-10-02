@@ -93,7 +93,7 @@ Python 插件需自行指定可用解释器；没有 Python 不影响基础 Rust
 
 ## 云端构建
 
-本地不需要安装 Flutter/MSVC。CNB `push` 执行 Rust 核心及便携插件契约验证；`api_trigger_release` 生成 Linux Web、Linux UI 和 Windows Web。确认 CNB 通过后，将代码同步至授权的 GitHub 仓库，GitHub Actions 构建 Windows UI 单文件包。
+本地不需要安装 Flutter/MSVC。CNB `push` 执行 Rust 核心及便携插件契约验证；`api_trigger_release` 生成 Linux Web、Linux UI 和 Windows Web。Windows原生编译和打包在已配置的远程Windows环境执行 `scripts/build-windows.ps1`，再运行 `tests/portable_contract.py` 与 `scripts/check-windows-ui.py`。GitHub Actions保留手动触发作为备用，不再随推送自动重复构建。
 
 Web 使用 React 19.3.0 与 Vite 8.3.2，静态资源嵌入 Rust 程序，使用系统字体，不依赖运行时 CDN、Flutter 或 CanvasKit。`api_trigger_web` 单独验证网页构建、浏览器登录、模拟掷骰和响应式截图。
 

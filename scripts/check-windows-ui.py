@@ -1,6 +1,7 @@
 """Cloud acceptance: portable extraction, desktop/core lifetime and measured RSS."""
 import json
 import os
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -42,7 +43,7 @@ try:
     running = processes()
     windows = [p for p in running if p['Name'] == 'qianbian_ui.exe']
     assert windows, 'Flutter desktop exited before acceptance'
-    measurement = {'platform': 'windows-2022', 'scenario': 'idle, five builtin workers, no QQ account', 'processes': running, 'units': 'bytes; Windows WorkingSetSize, shared pages counted per process'}
+    measurement = {'platform': platform.platform(), 'scenario': 'idle, five builtin workers, no QQ account', 'processes': running, 'units': 'bytes; Windows WorkingSetSize, shared pages counted per process'}
     Path('dist/windows-memory.json').write_text(json.dumps(measurement, indent=2), encoding='utf-8')
     for process in windows:
         subprocess.run(['taskkill', '/PID', str(process['ProcessId']), '/F'], check=True, capture_output=True)
