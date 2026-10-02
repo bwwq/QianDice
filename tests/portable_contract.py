@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
 import urllib.request
 import urllib.error
 
@@ -111,7 +112,20 @@ try:
     api('/plugins/python-example/enable', {})
     assert '第 3 次' in command('.pyhello')['public']
     assert command('.st 力量')['public'].endswith('55')
+    # An open SSE connection must not prevent graceful process shutdown.
+    sse_done = threading.Event()
+    def event_reader():
+        request = urllib.request.Request(base + '/events', headers={'authorization': 'Bearer ' + token})
+        try:
+            with urllib.request.urlopen(request, timeout=40) as response:
+                response.read()
+        finally:
+            sse_done.set()
+    watcher = threading.Thread(target=event_reader, daemon=True)
+    watcher.start()
+    time.sleep(.2)
     stop()
+    assert sse_done.wait(5), 'SSE stream did not close with backend'
     check = subprocess.run([str(binary), '--root', str(root), 'check-backup', str(root / 'data/backups' / backup)], capture_output=True)
     assert check.returncode == 0, check.stderr
     restore = subprocess.run([str(binary), '--root', str(root), 'restore', str(root / 'data/backups' / backup), '--confirm'], capture_output=True)

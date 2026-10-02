@@ -933,6 +933,7 @@ async fn export(
         .into_response())
 }
 async fn events(State(app): State<Arc<App>>) -> impl IntoResponse {
+    let mut shutdown = app.shutdown.subscribe();
     let stream = tokio_stream::wrappers::BroadcastStream::new(app.events.subscribe()).filter_map(
         |v| async move {
             v.ok().map(|n| {
@@ -942,6 +943,11 @@ async fn events(State(app): State<Arc<App>>) -> impl IntoResponse {
             })
         },
     );
+    let stream = stream.take_until(async move {
+        if !*shutdown.borrow() {
+            let _ = shutdown.changed().await;
+        }
+    });
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
 async fn shutdown(State(app): State<Arc<App>>) -> Json<Value> {
