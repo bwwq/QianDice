@@ -580,7 +580,9 @@ async fn config_set(State(app): State<Arc<App>>, Json(input): Json<Value>) -> Ap
     let old = app.config.read().await.clone();
     let mut merged = serde_json::to_value(&old)?;
     for (key, value) in input.as_object().context("配置必须为对象")? {
-        ensure!(merged.get(key).is_some(), "未知配置字段：{key}");
+        if merged.get(key).is_none() {
+            return Err(anyhow::anyhow!("未知配置字段：{key}").into());
+        }
         merged[key] = value.clone();
     }
     let mut cfg: Config = serde_json::from_value(merged)?;
