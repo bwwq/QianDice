@@ -45,6 +45,7 @@ main:
             attachments:
               - Cargo.lock
               - ui/pubspec.lock
+              - web/package-lock.json
               - dist/qianbian-linux-x86_64
               - dist/qianbian-linux-ui-x86_64.tar.gz
               - dist/qianbian-windows-web.exe
@@ -55,6 +56,37 @@ main:
               - dist/ui-dom.html
         - name: 确认界面运行结果
           script: python3 -c "import json; r=json.load(open('dist/ui-runtime-errors.json')); print(r); assert r['verified'], '界面运行检查失败，请查看已上传的截图与诊断'"
+  api_trigger_web:
+    - name: react-web
+      runner:
+        tags: cnb:arch:amd64
+        cpus: 8
+      docker:
+        build: scripts/cloud.Dockerfile
+        volumes:
+          - /root/.cargo/registry:copy-on-write
+          - /root/.npm:copy-on-write
+      stages:
+        - name: 构建React网页与后台
+          script: |
+            bash scripts/build-web.sh
+            cargo test --locked --all-targets
+            cargo build --locked --release --bin qianbian
+            python3 tests/portable_contract.py target/release/qianbian
+            node scripts/capture-ui.mjs
+            cp target/release/qianbian dist/qianbian-linux-x86_64
+        - name: 保存网页与运行诊断
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - web/package-lock.json
+              - dist/qianbian-linux-x86_64
+              - dist/ui-desktop.png
+              - dist/ui-compact.png
+              - dist/ui-runtime-errors.json
+              - dist/ui-dom.html
+        - name: 确认网页可用
+          script: python3 -c "import json; r=json.load(open('dist/ui-runtime-errors.json')); print(r); assert r['verified']"
   api_trigger_windows:
     - name: windows-desktop
       runner:

@@ -4,6 +4,8 @@
 /data/
 /runtime/
 /.scratch/
+web/node_modules/
+web/dist/
 **/__pycache__/
 ui/.dart_tool/
 ui/build/

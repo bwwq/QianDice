@@ -20,23 +20,29 @@ try {
   }
   if (!token) throw new Error('Visual verification backend did not start');
   browser = await chromium.launch({headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
-  const context = await browser.newContext({viewport: {width: 1440, height: 960}, colorScheme: 'dark', locale: 'zh-CN'});
+  const context = await browser.newContext({viewport: {width: 1440, height: 960}, colorScheme: 'light', locale: 'zh-CN'});
   await context.request.post('http://127.0.0.1:19610/api/v1/login', {data: {token}});
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
   page.on('requestfailed', request => consoleErrors.push(`${request.url()} ${request.failure()?.errorText}`));
   await page.goto('http://127.0.0.1:19610/', {waitUntil: 'domcontentloaded'});
-  try { await page.locator('flutter-view, flt-glass-pane').first().waitFor({state: 'attached', timeout: 30000}); }
-  catch (error) { errors.push(`Flutter root not attached: ${error.message}`); }
-  await page.waitForTimeout(3000);
+  try { await page.locator('[data-app-ready="true"]').waitFor({state: 'visible', timeout: 15000}); }
+  catch (error) { errors.push(`管理页面未能启动: ${error.message}`); }
   await mkdir('dist', {recursive: true});
   await page.screenshot({path: 'dist/ui-desktop.png'});
+  if (errors.length === 0) {
+    await page.locator('nav').getByRole('button', {name: '模拟聊天', exact: true}).click();
+    await page.getByRole('textbox', {name: '输入指令', exact: true}).fill('.r 1d1');
+    await page.getByRole('button', {name: '发送', exact: true}).click();
+    await page.locator('.message.bot').filter({hasText: '= 1'}).waitFor({timeout: 10000});
+    await page.locator('nav').getByRole('button', {name: '概览', exact: true}).click();
+  }
   await page.setViewportSize({width: 700, height: 900});
   await page.waitForTimeout(500);
   await page.screenshot({path: 'dist/ui-compact.png'});
   await writeFile('dist/ui-dom.html', await page.content());
-  verified = errors.length === 0;
+  verified = errors.length === 0 && consoleErrors.length === 0;
   console.log(`Headless UI screenshots captured; verified=${verified}`);
 } catch (error) {
   errors.push(error.message);

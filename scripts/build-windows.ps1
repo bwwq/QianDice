@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 flutter config --no-analytics --enable-windows-desktop
 $lockedDependencies = [System.IO.File]::ReadAllBytes((Join-Path $PWD 'ui/pubspec.lock'))
-flutter create --no-pub --project-name qianbian_ui --platforms windows,web ui
+flutter create --no-pub --project-name qianbian_ui --platforms windows ui
 [System.IO.File]::WriteAllBytes((Join-Path $PWD 'ui/pubspec.lock'), $lockedDependencies)
 Remove-Item -LiteralPath ui/test/widget_test.dart -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path ui/assets/fonts | Out-Null
@@ -12,12 +12,16 @@ flutter pub get --enforce-lockfile
 if ($LASTEXITCODE) { throw 'Flutter依赖解析失败' }
 flutter analyze --no-fatal-infos
 if ($LASTEXITCODE) { throw 'Flutter静态检查失败' }
-flutter build web --release --no-web-resources-cdn
-if ($LASTEXITCODE) { throw 'Web构建失败' }
 flutter build windows --release
 if ($LASTEXITCODE) { throw 'Windows UI构建失败' }
 Pop-Location
-Copy-Item ui/build/web/* assets/web -Recurse -Force
+Push-Location web
+npm ci --ignore-scripts
+if ($LASTEXITCODE) { throw 'React依赖安装失败' }
+npm run build
+if ($LASTEXITCODE) { throw 'React Web构建失败' }
+Pop-Location
+Copy-Item web/dist/* assets/web -Recurse -Force
 cargo build --locked --release --bin qianbian
 if ($LASTEXITCODE) { throw 'Rust后台构建失败' }
 New-Item -ItemType Directory -Force -Path dist/windows-payload | Out-Null
