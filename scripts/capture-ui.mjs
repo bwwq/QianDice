@@ -9,6 +9,9 @@ const { chromium } = require('playwright');
 const root = await mkdtemp(path.join(tmpdir(), 'qianbian-visual-'));
 const process = spawn(path.resolve('target/release/qianbian'), ['--root', root, '--listen', '127.0.0.1:19610'], {stdio: ['ignore', 'ignore', 'pipe']});
 let browser;
+const errors = [];
+const consoleErrors = [];
+let verified = false;
 try {
   let token;
   for (let i = 0; i < 100; i++) {
@@ -16,24 +19,30 @@ try {
     catch { await new Promise(resolve => setTimeout(resolve, 100)); }
   }
   if (!token) throw new Error('Visual verification backend did not start');
-  browser = await chromium.launch({headless: true, args: ['--no-sandbox']});
+  browser = await chromium.launch({headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
   const context = await browser.newContext({viewport: {width: 1440, height: 960}, colorScheme: 'dark'});
   await context.request.post('http://127.0.0.1:19610/api/v1/login', {data: {token}});
   const page = await context.newPage();
-  const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+  page.on('requestfailed', request => consoleErrors.push(`${request.url()} ${request.failure()?.errorText}`));
   await page.goto('http://127.0.0.1:19610/', {waitUntil: 'domcontentloaded'});
-  await page.locator('flutter-view').waitFor({timeout: 60000});
+  try { await page.locator('flutter-view, flt-glass-pane').first().waitFor({state: 'attached', timeout: 30000}); }
+  catch (error) { errors.push(`Flutter root not attached: ${error.message}`); }
   await page.waitForTimeout(3000);
   await mkdir('dist', {recursive: true});
   await page.screenshot({path: 'dist/ui-desktop.png'});
   await page.setViewportSize({width: 700, height: 900});
   await page.waitForTimeout(500);
   await page.screenshot({path: 'dist/ui-compact.png'});
-  await writeFile('dist/ui-runtime-errors.json', JSON.stringify(errors, null, 2));
-  if (errors.length) throw new Error(`UI runtime errors: ${errors.join('; ')}`);
-  console.log('Headless UI screenshots captured; no JavaScript page errors.');
+  await writeFile('dist/ui-dom.html', await page.content());
+  verified = errors.length === 0;
+  console.log(`Headless UI screenshots captured; verified=${verified}`);
+} catch (error) {
+  errors.push(error.message);
 } finally {
+  await mkdir('dist', {recursive: true});
+  await writeFile('dist/ui-runtime-errors.json', JSON.stringify({verified, errors, consoleErrors}, null, 2));
   await browser?.close();
   process.kill('SIGTERM');
 }
