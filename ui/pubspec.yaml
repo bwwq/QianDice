@@ -8,6 +8,8 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.2
+  file_selector: ^1.0.3
+  web: ^1.1.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

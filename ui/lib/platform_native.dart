@@ -1,4 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:file_selector/file_selector.dart';
+Future<bool> save(Uint8List bytes, String name, String mime) async {
+  final location = await getSaveLocation(suggestedName: name);
+  if (location == null) return false;
+  await XFile.fromData(bytes, name: name, mimeType: mime).saveTo(location.path);
+  return true;
+}
 Future<(String, String)> connection(List<String> args) async {
   String endpoint = 'http://127.0.0.1:9610';
   String token = '';
