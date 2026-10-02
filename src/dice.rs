@@ -11,7 +11,8 @@ pub fn evaluate(expression:&str,default_faces:u32,rng:&mut impl Rng)->Result<Rol
     let text=if normalized.is_empty(){format!("1d{default_faces}")}else{normalized};
     let mut p=Parser{s:text.as_bytes(),pos:0,rng,budget:1000,depth:0,detail:vec![],default_faces};
     let total=p.expr(0)?;ensure!(p.pos==p.s.len(),"无法识别骰式位置 {}",p.pos+1);
-    Ok(Roll{expression:text,total,detail:p.detail})
+    let detail=std::mem::take(&mut p.detail);drop(p);
+    Ok(Roll{expression:text,total,detail})
 }
 struct Parser<'a,R>{s:&'a[u8],pos:usize,rng:&'a mut R,budget:u32,depth:u32,detail:Vec<String>,default_faces:u32}
 impl<R:Rng> Parser<'_,R>{
@@ -39,7 +40,6 @@ pub fn percentile(extra:u32,penalty:bool,rng:&mut impl Rng)->(u32,String){
     (value,format!("{}{} {:?} → {value}",if penalty{"惩罚"}else{"奖励"},extra,values))
 }
 pub fn max_value(expression:&str)->Result<i64>{
-    struct Maximum;impl rand::RngCore for Maximum{fn next_u32(&mut self)->u32{u32::MAX-1}fn next_u64(&mut self)->u64{u64::MAX-1}fn fill_bytes(&mut self,d:&mut[u8]){d.fill(254)}fn try_fill_bytes(&mut self,d:&mut[u8])->std::result::Result<(),rand::Error>{self.fill_bytes(d);Ok(())}}
     // SAN loss expressions only admit nonnegative NdM terms joined by +.
     let mut sum=0i64;
     for part in expression.to_lowercase().split('+') {let part=part.trim();let n=if let Some((n,m))=part.split_once('d'){let count=if n.is_empty(){1}else{n.parse::<i64>()?};let faces=m.parse::<i64>()?;ensure!(count>0&&count<=1000&&faces>0&&faces<=1_000_000,"损失骰式超出限制");count.checked_mul(faces).ok_or_else(||anyhow::anyhow!("损失溢出"))?}else{part.parse()?};if n<0{bail!("损失不能为负数")}sum=sum.checked_add(n).ok_or_else(||anyhow::anyhow!("损失溢出"))?;}

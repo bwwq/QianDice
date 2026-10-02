@@ -1,0 +1,14 @@
+[Unit]
+Description=Qianbian TRPG service
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/qianbian
+ExecStart=/opt/qianbian/qianbian --root /opt/qianbian
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

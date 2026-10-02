@@ -18,6 +18,12 @@ main:
           script: cargo test --all-targets
         - name: Rust构建
           script: cargo build --release
+        - name: 保存锁文件与后台
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - Cargo.lock
+              - target/release/qianbian
   api_trigger_release:
     - name: portable-release
       runner:
@@ -31,6 +37,16 @@ main:
       stages:
         - name: 构建便携发布包
           script: bash scripts/build-cloud.sh
+        - name: 保存便携发布包
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - Cargo.lock
+              - ui/pubspec.lock
+              - dist/qianbian-linux-x86_64
+              - dist/qianbian-linux-ui-x86_64.tar.gz
+              - dist/qianbian-windows-web.exe
+              - dist/SHA256SUMS
   api_trigger_windows:
     - name: windows-desktop
       runner:
