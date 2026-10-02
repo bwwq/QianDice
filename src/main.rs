@@ -141,10 +141,22 @@ async fn main() -> Result<()> {
     let shutdown_app = app.clone();
     axum::serve(listener, router(app.clone()))
         .with_graceful_shutdown(async move {
-            tokio::select! {_=tokio::signal::ctrl_c()=>{},_=stop.changed()=>{}}
+            tokio::select! {_=tokio::signal::ctrl_c()=>{},_=terminate_signal()=>{},_=stop.changed()=>{}}
             let _ = shutdown_app.shutdown.send(true);
         })
         .await?;
     plugins.shutdown().await;
     Ok(())
+}
+async fn terminate_signal() {
+    #[cfg(unix)]
+    {
+        if let Ok(mut signal) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
+            signal.recv().await;
+        }
+    }
+    #[cfg(not(unix))]
+    std::future::pending::<()>().await;
 }

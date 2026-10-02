@@ -2,11 +2,11 @@
 set -euo pipefail
 export PATH="/opt/flutter/bin:$PATH"
 flutter config --no-analytics --enable-linux-desktop --enable-web
-flutter create --project-name qianbian_ui --platforms linux,windows,web ui
+flutter create --no-pub --project-name qianbian_ui --platforms linux,windows,web ui
 rm -f ui/test/widget_test.dart
 mkdir -p ui/assets/fonts
 curl -fL 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf' -o ui/assets/fonts/NotoSansSC.ttf
-(cd ui && flutter pub get && flutter analyze --no-fatal-infos && flutter build web --release --no-web-resources-cdn && flutter build linux --release)
+(cd ui && flutter pub get --enforce-lockfile && flutter analyze --no-fatal-infos && flutter build web --release --no-web-resources-cdn && flutter build linux --release)
 cp -a ui/build/web/. assets/web/
 cargo test --locked --all-targets
 cargo build --locked --release
