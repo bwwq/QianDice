@@ -54,6 +54,7 @@ main:
               - dist/ui-compact.png
               - dist/ui-runtime-errors.json
               - dist/ui-dom.html
+              - dist/linux-memory.json
         - name: 确认界面运行结果
           script: python3 -c "import json; r=json.load(open('dist/ui-runtime-errors.json')); print(r); assert r['verified'], '界面运行检查失败，请查看已上传的截图与诊断'"
   api_trigger_web:
@@ -85,6 +86,7 @@ main:
               - dist/ui-compact.png
               - dist/ui-runtime-errors.json
               - dist/ui-dom.html
+              - dist/linux-memory.json
         - name: 确认网页可用
           script: python3 -c "import json; r=json.load(open('dist/ui-runtime-errors.json')); print(r); assert r['verified']"
   api_trigger_windows:

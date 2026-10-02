@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -68,6 +69,12 @@ try:
         assert mismatch.returncode != 0, 'launcher accepted a different backend identity'
     finally:
         token_path.write_text(token, encoding='utf-8')
+    api('/config', {'accounts': [{'id': 'contract', 'self_id': '1', 'mode': 'reverse', 'token': 'portable-contract-token-32-chars!', 'enabled': False}]}, 'PUT')
+    masked = api('/config')
+    assert masked['accounts'][0]['token'] == ''
+    api('/config', {'accounts': masked['accounts']}, 'PUT')
+    api('/config', {'cooldown_ms': 0}, 'PUT')
+    assert api('/config')['accounts'][0]['id'] == 'contract', 'partial settings overwrote account configuration'
     try:
         api('/status', auth=False)
         raise AssertionError('Unauthenticated access accepted')
@@ -102,6 +109,8 @@ try:
     assert '第 1 次' in command('.pyhello')['public']
     api('/plugins/load', {'path': 'python-example/1.0.0/plugin.json'})
     assert '第 2 次' in command('.pyhello')['public'], 'plugin storage lost during reload'
+    with sqlite3.connect(root / 'data/qianbian.sqlite') as database:
+        assert not database.execute("SELECT 1 FROM kv WHERE namespace = 'plugin:python-example'").fetchone(), 'simulation wrote production plugin storage'
     command('.pylater')
     for _ in range(15):
         if command('.pytimers')['public'] == '1':

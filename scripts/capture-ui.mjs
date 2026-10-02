@@ -1,7 +1,7 @@
 // One-off visual verification in the CNB container, always a fresh headless browser.
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, mkdir, writeFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 const require = createRequire('/opt/qianbian-visual/package.json');
@@ -42,6 +42,18 @@ try {
   await page.waitForTimeout(500);
   await page.screenshot({path: 'dist/ui-compact.png'});
   await writeFile('dist/ui-dom.html', await page.content());
+  const processes = [];
+  for (const pid of await readdir('/proc')) {
+    if (!/^\d+$/.test(pid)) continue;
+    try {
+      const command = (await readFile(`/proc/${pid}/cmdline`, 'utf8')).replaceAll('\0', ' ');
+      if (!command.includes(root)) continue;
+      const status = await readFile(`/proc/${pid}/status`, 'utf8');
+      const rssKiB = Number(status.match(/^VmRSS:\s+(\d+)/m)?.[1] || 0);
+      processes.push({pid: Number(pid), role: command.includes('worker') ? 'plugin' : 'core', rssKiB});
+    } catch {}
+  }
+  await writeFile('dist/linux-memory.json', JSON.stringify({scenario: 'five builtin workers, one browser, after isolated 1d1 roll; no QQ account', measurement: 'Linux VmRSS KiB; shared pages counted per process', processes}, null, 2));
   verified = errors.length === 0 && consoleErrors.length === 0;
   console.log(`Headless UI screenshots captured; verified=${verified}`);
 } catch (error) {

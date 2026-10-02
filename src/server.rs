@@ -575,10 +575,15 @@ async fn config_get(State(app): State<Arc<App>>) -> Json<Value> {
     }
     Json(serde_json::to_value(config).unwrap())
 }
-async fn config_set(State(app): State<Arc<App>>, Json(mut cfg): Json<Config>) -> ApiResult<Value> {
+async fn config_set(State(app): State<Arc<App>>, Json(input): Json<Value>) -> ApiResult<Value> {
     let _gate = app.maintenance.write().await;
-    ensure_config(&cfg)?;
     let old = app.config.read().await.clone();
+    let mut merged = serde_json::to_value(&old)?;
+    for (key, value) in input.as_object().context("配置必须为对象")? {
+        ensure!(merged.get(key).is_some(), "未知配置字段：{key}");
+        merged[key] = value.clone();
+    }
+    let mut cfg: Config = serde_json::from_value(merged)?;
     for a in &mut cfg.accounts {
         if a.token.is_empty() {
             if let Some(o) = old.accounts.iter().find(|o| o.id == a.id) {
@@ -586,6 +591,7 @@ async fn config_set(State(app): State<Arc<App>>, Json(mut cfg): Json<Config>) ->
             }
         }
     }
+    ensure_config(&cfg)?;
     atomic_write(
         &app.paths.data.join("config/server.json"),
         &serde_json::to_vec_pretty(&cfg)?,

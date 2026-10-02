@@ -215,7 +215,11 @@ fn host_call(
             let s = store.context("存储不可用")?;
             let key = params["key"].as_str().context("缺少key")?;
             ensure!(key.len() < 512, "key过长");
-            let ns = format!("plugin:{}", m.id);
+            let ns = if context["platform"] == "simulation" {
+                format!("simulation:plugin:{}", m.id)
+            } else {
+                format!("plugin:{}", m.id)
+            };
             if method == "storage.get" {
                 let (v, r) = s.get(&ns, key)?;
                 Ok(json!({"value":v,"revision":r}))
@@ -248,7 +252,11 @@ fn host_call(
             let id = params["id"].as_str().context("缺少定时任务标识")?;
             ensure!(id.len() <= 128 && !id.is_empty(), "任务标识无效");
             let store = store.context("存储不可用")?;
-            let key = format!("{}:{id}", m.id);
+            let key = if context["platform"] == "simulation" {
+                format!("simulation:{}:{id}", m.id)
+            } else {
+                format!("{}:{id}", m.id)
+            };
             let (_, rev) = store.get("schedule", &key)?;
             let value = if method == "schedule.cancel" {
                 json!({"enabled":false,"plugin":m.id})

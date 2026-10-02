@@ -32,11 +32,14 @@ jobs:
         run: ./scripts/build-windows.ps1
       - name: Portable lifecycle contracts
         run: python tests/portable_contract.py target/release/qianbian.exe
+      - name: Self-extraction and desktop lifecycle
+        run: python scripts/check-windows-ui.py dist/qianbian-windows-ui.exe
       - uses: actions/upload-artifact@v4
         with:
           name: qianbian-windows-ui
           path: |
             dist/qianbian-windows-ui.exe
+            dist/windows-memory.json
             Cargo.lock
             ui/pubspec.lock
           if-no-files-found: error

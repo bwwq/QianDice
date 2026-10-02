@@ -1,6 +1,6 @@
 # 千变 Qianbian
 
-Rust 后台、Flutter 管理界面，面向 CoC / DND 的便携跑团骰系。通过 OneBot 11 对接独立 QQ 协议端；数据保存在程序旁，Python 和 Rust 扩展以独立进程接入。
+Rust 后台、React Web 管理端、Flutter 桌面界面，面向 CoC / DND 的便携跑团骰系。通过 OneBot 11 对接独立 QQ 协议端；数据保存在程序旁，Python 和 Rust 扩展以独立进程接入。
 
 ## 启动
 
@@ -87,7 +87,7 @@ Python 插件需自行指定可用解释器；没有 Python 不影响基础 Rust
 
 ## 更新与回退
 
-停止后台及界面，替换程序文件，保留整个 `data/`。不同 Web/UI 版本共用数据。`runtime/` 存储版本资源及旧程序，当前版本不自动清理这些文件，便于离线回退。
+停止后台及界面，替换程序文件，保留整个 `data/`。不同 Web/UI 版本共用数据。`runtime/` 存储版本资源及旧程序，当前版本不自动清理这些文件，便于离线回退。回退时将保留的发布文件复制回原入口位置，或显式指定原数据目录；不要直接从版本资源子目录启动并期待自动找到原数据。
 
 数据兼容的旧版可直接启动；不兼容的旧版拒绝写入，应使用新版或恢复对应的升级前备份。数据库当前结构版本为 1，尚无跨结构版本的迁移需求。
 
@@ -95,7 +95,9 @@ Python 插件需自行指定可用解释器；没有 Python 不影响基础 Rust
 
 本地不需要安装 Flutter/MSVC。CNB `push` 执行 Rust 核心及便携插件契约验证；`api_trigger_release` 生成 Linux Web、Linux UI 和 Windows Web。确认 CNB 通过后，将代码同步至授权的 GitHub 仓库，GitHub Actions 构建 Windows UI 单文件包。
 
-Flutter 固定为 3.47.6。平台入口由该版本的 `flutter create` 在构建容器中生成；Web 资源、字体和渲染器打包进 Rust 程序，不依赖运行时 CDN。Windows UI 包首次运行释放 DLL 和资源，而非无运行资源的纯单文件程序。
+Web 使用 React 19.3.0 与 Vite 8.3.2，静态资源嵌入 Rust 程序，使用系统字体，不依赖运行时 CDN、Flutter 或 CanvasKit。`api_trigger_web` 单独验证网页构建、浏览器登录、模拟掷骰和响应式截图。
+
+桌面 Flutter 固定为 3.47.6，平台入口由 `flutter create` 在构建容器中生成。Windows UI 包首次运行释放 DLL 和资源。Linux UI 以 Ubuntu 24.04 为基线，需要 GTK 3、libstdc++、liblzma 和可用的图形会话；Linux Web 无需这些图形库。桌面随包附带 Noto Sans SC 字体及 OFL 许可。
 
 ## 当前边界
 
