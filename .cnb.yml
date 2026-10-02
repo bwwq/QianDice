@@ -15,9 +15,9 @@ main:
             uname -a
             if test -c /dev/kvm; then echo 'KVM_DEVICE=present'; else echo 'KVM_DEVICE=absent'; fi
         - name: 稳定规则与协议验证
-          script: cargo test --all-targets
+          script: cargo test --locked --all-targets
         - name: Rust构建
-          script: cargo build --release
+          script: cargo build --locked --release
         - name: 便携数据与插件契约
           script: python3 tests/portable_contract.py target/release/qianbian
         - name: 保存锁文件与后台
