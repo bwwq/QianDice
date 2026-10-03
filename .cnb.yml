@@ -128,6 +128,9 @@ main:
               - dist/qianbian-linux-x86_64
               - dist/ui-desktop.png
               - dist/ui-compact.png
+              - dist/ui-mobile.png
+              - dist/ui-dark.png
+              - dist/ui-login.png
               - dist/ui-runtime-errors.json
               - dist/ui-dom.html
               - dist/linux-memory.json
@@ -158,6 +161,10 @@ main:
               - dist/qianbian-linux-x86_64
               - dist/qianbian-linux-ui-x86_64.tar.gz
               - dist/linux-desktop-memory.json
+              - dist/ui-desktop.png
+              - dist/ui-mobile.png
+              - dist/ui-dark.png
+              - dist/ui-login.png
   api_trigger_windows:
     - name: windows-desktop
       runner:
