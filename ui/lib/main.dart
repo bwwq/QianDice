@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:http/http.dart' as http;
+import 'appearance.dart';
 import 'platform_web.dart'
     if (dart.library.io) 'platform_native.dart'
     as platform;
@@ -150,20 +151,12 @@ class _QianbianAppState extends State<QianbianApp> {
     } catch (_) {}
   }
 
-  FluentThemeData theme(Brightness brightness) => FluentThemeData(
-    brightness: brightness,
-    accentColor: Colors.blue,
-    fontFamily: 'QianbianSans',
-    scaffoldBackgroundColor: brightness == Brightness.dark
-        ? const Color(0xff202020)
-        : const Color(0xfff3f3f3),
-  );
   @override
   Widget build(BuildContext context) => FluentApp(
     title: '千变',
     debugShowCheckedModeBanner: false,
-    theme: theme(Brightness.light),
-    darkTheme: theme(Brightness.dark),
+    theme: workspaceTheme(Brightness.light),
+    darkTheme: workspaceTheme(Brightness.dark),
     themeMode: mode,
     home: loggedIn
         ? Workspace(
@@ -230,7 +223,7 @@ class _LoginState extends State<Login> {
         padding: const EdgeInsets.all(28),
         child: SizedBox(
           width: 420,
-          child: Card(
+          child: Surface(
             padding: const EdgeInsets.all(32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,16 +686,23 @@ class _WorkspaceState extends State<Workspace> {
       ),
     ),
     pane: NavigationPane(
+      size: const NavigationPaneSize(
+        openWidth: 196, openMinWidth: 196, openMaxWidth: 196, compactWidth: 60,
+      ),
       selected: page,
       onChanged: (index) => setState(() => page = index),
-      displayMode: MediaQuery.sizeOf(context).width < 760
+      displayMode: MediaQuery.sizeOf(context).width < 840
           ? PaneDisplayMode.minimal
           : expanded
           ? PaneDisplayMode.expanded
           : PaneDisplayMode.compact,
       header: Padding(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-        child: Text('工作台', style: FluentTheme.of(context).typography.caption),
+        child: Row(children: [
+          Icon(glyph('circle_fill'), size: 7, color: WorkspacePalette.of(context).muted),
+          const SizedBox(width: 8),
+          Text('后台运行中', style: FluentTheme.of(context).typography.caption),
+        ]),
       ),
       items: [
         for (final entry in pages)
@@ -714,8 +714,22 @@ class _WorkspaceState extends State<Workspace> {
       ],
     ),
     paneBodyBuilder: (item, selectedBody) => ScaffoldPage(
-      header: PageHeader(title: Text(pages[page].$1)),
-      content: Column(
+      header: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+        child: Surface(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Row(children: [
+            Icon(pages[page].$2, size: 20),
+            const SizedBox(width: 12),
+            Text(pages[page].$1, style: FluentTheme.of(context).typography.title),
+          ]),
+        ),
+      ),
+      content: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1120),
+          child: Column(
         children: [
           if (error != null)
             Padding(
@@ -765,6 +779,8 @@ class _WorkspaceState extends State<Workspace> {
           ),
         ],
       ),
+      ),
+      ),
     ),
   );
   Widget body(List<Widget> children) => ListView(
@@ -774,7 +790,7 @@ class _WorkspaceState extends State<Workspace> {
   Widget section(String title, List<Widget> children, {Widget? action}) =>
       Padding(
         padding: const EdgeInsets.only(bottom: 20),
-        child: Card(
+        child: Surface(
           padding: const EdgeInsets.all(22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -809,8 +825,9 @@ class _WorkspaceState extends State<Workspace> {
           ),
     );
     return body([
-      section('下一场冒险', [
-        Wrap(
+      Padding(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Wrap(
           spacing: 12,
           runSpacing: 12,
           children: [
@@ -827,12 +844,14 @@ class _WorkspaceState extends State<Workspace> {
             ),
           ],
         ),
-      ]),
-      Wrap(
-        spacing: 16,
-        runSpacing: 16,
-        children:
-            [
+      ),
+      LayoutBuilder(builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 720 ? 4 : 2;
+        final width = (constraints.maxWidth - 12 * (columns - 1)) / columns;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
                   ('在线账号', '${connections.length}', 'group'),
                   ('角色卡', '$cardCount', 'contact'),
                   (
@@ -848,8 +867,8 @@ class _WorkspaceState extends State<Workspace> {
                 ]
                 .map(
                   (entry) => SizedBox(
-                    width: 196,
-                    child: Card(
+                    width: width,
+                    child: Surface(
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -878,14 +897,22 @@ class _WorkspaceState extends State<Workspace> {
                   ),
                 )
                 .toList(),
-      ),
+        );
+      }),
       const SizedBox(height: 24),
+      if (connections.isEmpty)
+        section('连接机器人', [
+          Text('添加 QQ 账号后，就可以在群里开始跑团。',
+              style: TextStyle(color: WorkspacePalette.of(context).muted)),
+          const SizedBox(height: 16),
+          commandButton('添加账号', () => setState(() => page = 1), icon: 'add'),
+        ]),
       section(
         '最近动态',
         notices.isEmpty
             ? [
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 28),
+                  padding: EdgeInsets.symmetric(vertical: 8),
                   child: Text('暂无动态'),
                 ),
               ]
@@ -979,7 +1006,7 @@ class _WorkspaceState extends State<Workspace> {
           cards.add(
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Card(
+              child: Surface(
                 child: ListTile(
                   leading: Icon(glyph('contact')),
                   title: Text('${entry.key}'),
@@ -1045,7 +1072,7 @@ class _WorkspaceState extends State<Workspace> {
     ...plugins.map(
       (plugin) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: Card(
+        child: Surface(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1238,17 +1265,40 @@ class _ChatPageState extends State<ChatPage> {
     padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
     child: Column(
       children: [
-        Row(
-          children: [
-            Expanded(child: field('玩家', TextBox(controller: user))),
-            const SizedBox(width: 16),
-            Expanded(child: field('练习群', TextBox(controller: group))),
-          ],
+        Surface(
+          child: Column(children: [
+            Row(
+              children: [
+                Expanded(child: field('玩家', TextBox(controller: user))),
+                const SizedBox(width: 16),
+                Expanded(child: field('练习群', TextBox(controller: group))),
+              ],
+            ),
+            Row(children: [
+              Icon(glyph('info'), size: 14, color: WorkspacePalette.of(context).muted),
+              const SizedBox(width: 8),
+              Flexible(child: Text('练习模式 · 不发送 QQ 消息，不修改正式角色。',
+                  style: FluentTheme.of(context).typography.caption)),
+            ]),
+          ]),
         ),
-        const InfoBar(title: Text('练习模式'), content: Text('不发送 QQ 消息，不修改正式角色。')),
         const SizedBox(height: 16),
         Expanded(
-          child: ListView.builder(
+          child: messages.isEmpty
+              ? Center(child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(glyph('cube_shape'), size: 36, color: WorkspacePalette.of(context).muted),
+                    const SizedBox(height: 20),
+                    Text('掷一次骰子', style: FluentTheme.of(context).typography.subtitle),
+                    const SizedBox(height: 16),
+                    Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
+                      for (final command in ['.r 1d100', '.coc', '.help'])
+                        commandButton(command, () => input.text = command),
+                    ]),
+                  ],
+                ))
+              : ListView.builder(
             reverse: true,
             itemCount: messages.length,
             itemBuilder: (context, index) {
@@ -1263,12 +1313,8 @@ class _ChatPageState extends State<ChatPage> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: item.$1
-                        ? FluentTheme.of(
-                            context,
-                          ).accentColor.withValues(alpha: .13)
-                        : FluentTheme.of(context).brightness == Brightness.dark
-                        ? const Color(0xff2b2b2b)
-                        : const Color(0xffffffff),
+                        ? WorkspacePalette.of(context).selected
+                        : WorkspacePalette.of(context).section,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: SelectableText(item.$2),
@@ -1278,13 +1324,26 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: WorkspacePalette.of(context).control,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
           children: [
             Expanded(
               child: TextBox(
                 controller: input,
                 onSubmitted: (_) => send(),
                 placeholder: '输入指令，如 .r 1d100',
+                decoration: const WidgetStatePropertyAll(BoxDecoration(
+                  color: Colors.transparent,
+                  border: Border.fromBorderSide(BorderSide.none),
+                )),
+                foregroundDecoration: const WidgetStatePropertyAll(BoxDecoration(
+                  border: Border.fromBorderSide(BorderSide.none),
+                )),
               ),
             ),
             const SizedBox(width: 12),
@@ -1298,6 +1357,7 @@ class _ChatPageState extends State<ChatPage> {
                   : const Text('发送'),
             ),
           ],
+        ),
         ),
       ],
     ),
@@ -1423,7 +1483,7 @@ class _ContentPageState extends State<ContentPage> {
       for (final name in names)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: Card(
+          child: Surface(
             child: ListTile(
               leading: Icon(
                 glyph(widget.kind == 'decks' ? 'album' : 'library'),

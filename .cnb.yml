@@ -163,7 +163,9 @@ main:
           settings:
             attachments:
               - ui/pubspec.lock
-              - ui/lib/main.dart
+                - ui/lib/main.dart
+                - ui/lib/appearance.dart
+                - ui/integration_test/desktop_contract.dart
               - dist/fluent-analysis.txt
               - dist/fluent-analysis-status.txt
         - name: 确认静态检查通过

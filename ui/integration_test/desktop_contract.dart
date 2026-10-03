@@ -78,6 +78,8 @@ void main() {
       await tester.tap(find.text('模拟聊天').hitTestable().first);
       await tester.pumpAndSettle();
       expect(tester.widget<TextBox>(input).controller!.text, '.r 1d1 未发送草稿');
+      await tester.tap(input);
+      await tester.pumpAndSettle();
       await tester.enterText(input, '.r 1d1');
       await tester.pumpAndSettle();
       expect(tester.widget<TextBox>(input).controller!.text, '.r 1d1');
