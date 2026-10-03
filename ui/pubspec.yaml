@@ -3,10 +3,11 @@ description: 千变骰系管理端
 publish_to: none
 version: 0.1.0+1
 environment:
-  sdk: '>=3.5.0 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
+  fluent_ui: 4.16.1
   http: ^1.2.2
   file_selector: ^1.0.3
   web: ^1.1.1
@@ -15,7 +16,6 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 flutter:
-  uses-material-design: true
   assets:
     - assets/fonts/OFL.txt
   fonts:

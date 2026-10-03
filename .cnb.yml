@@ -136,6 +136,33 @@ main:
               - dist/linux-memory.json
         - name: 确认网页可用
           script: python3 -c "import json; r=json.load(open('dist/ui-runtime-errors.json')); print(r); assert r['verified']"
+  api_trigger_fluent_prepare:
+    - name: fluent-dependencies
+      runner:
+        tags: cnb:arch:amd64
+        cpus: 8
+      docker:
+        build: scripts/cloud.Dockerfile
+        volumes:
+          - /root/.pub-cache:copy-on-write
+      stages:
+        - name: 解析Fluent依赖与静态检查
+          script: |
+            mkdir -p dist
+            (cd ui && flutter pub get && dart format lib/main.dart && flutter analyze --no-fatal-infos) > dist/fluent-analysis.txt 2>&1
+            fluent_status=$?
+            printf '%s' "$fluent_status" > dist/fluent-analysis-status.txt
+            cat dist/fluent-analysis.txt
+        - name: 保存依赖与诊断
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - ui/pubspec.lock
+              - ui/lib/main.dart
+              - dist/fluent-analysis.txt
+              - dist/fluent-analysis-status.txt
+        - name: 确认静态检查通过
+          script: test "$(cat dist/fluent-analysis-status.txt)" = 0
   api_trigger_linux_ui:
     - name: linux-desktop-acceptance
       runner:
