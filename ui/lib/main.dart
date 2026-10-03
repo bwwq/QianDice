@@ -1122,7 +1122,7 @@ class _WorkspaceState extends State<Workspace> {
       ),
     ]),
     section('数据与备份', [
-      Text(
+      SelectableText(
         '${status['data_directory'] ?? ''}',
         style: FluentTheme.of(context).typography.caption,
       ),
@@ -1271,7 +1271,7 @@ class _ChatPageState extends State<ChatPage> {
                         : const Color(0xffffffff),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(item.$2),
+                  child: SelectableText(item.$2),
                 ),
               );
             },
@@ -1614,7 +1614,7 @@ class _LogsPageState extends State<LogsPage> {
         ),
       for (final row in rows)
         ListTile(
-          title: Text('${row['text']}'),
+          title: SelectableText('${row['text']}'),
           subtitle: Text('${row['actor']} · ${row['time']}'),
         ),
       if (rows.isNotEmpty)
