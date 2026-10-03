@@ -140,7 +140,7 @@ def stop():
 
 
 def command(text):
-    return api('/simulate', {'context': {'platform': 'simulation', 'account': 'test', 'user': 'owner', 'group': 'group'}, 'command': text})
+    return api('/simulate', {'context': {'platform': 'simulation', 'account': 'test', 'user': 'owner', 'group': 'group'}, 'text': text})
 
 
 def force_due():

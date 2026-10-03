@@ -16,6 +16,7 @@ cargo build --locked --release
 python3 tests/portable_contract.py target/release/qianbian
 python3 tests/backup_contract.py target/release/qianbian
 node scripts/capture-ui.mjs
+python3 -c "import json; result=json.load(open('dist/ui-runtime-errors.json')); assert result['verified'], result"
 desktop_version="linux-ui-$(git rev-parse --short=12 HEAD)"
 mkdir -p "dist/linux-ui/runtime/$desktop_version"
 cp target/release/qianbian dist/qianbian-linux-x86_64

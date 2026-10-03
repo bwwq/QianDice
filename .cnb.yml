@@ -226,11 +226,14 @@ main:
       stages:
         - name: 构建并验收Linux桌面
           script: |
-            apt-get update -qq
-            apt-get install -y --no-install-recommends xvfb xauth scrot
-            QIANBIAN_LINUX_ONLY=1 bash scripts/build-cloud.sh
-            xvfb-run -a -s '-screen 0 1366x900x24' python3 scripts/check-linux-ui.py dist/linux-ui
-            QIANBIAN_TEST_BINARY="$(pwd)/target/release/qianbian" QIANBIAN_UI_REPORT_DIR="$(pwd)/dist" xvfb-run -a -s '-screen 0 1366x900x24' bash -c 'cd ui && flutter test integration_test/desktop_contract.dart -d linux'
+            mkdir -p dist
+            if (set -e; apt-get update -qq; apt-get install -y --no-install-recommends xvfb xauth scrot; QIANBIAN_LINUX_ONLY=1 bash scripts/build-cloud.sh; xvfb-run -a -s '-screen 0 1366x900x24' python3 scripts/check-linux-ui.py dist/linux-ui; QIANBIAN_TEST_BINARY="$(pwd)/target/release/qianbian" QIANBIAN_UI_REPORT_DIR="$(pwd)/dist" xvfb-run -a -s '-screen 0 1366x900x24' bash -c 'cd ui && flutter test integration_test/desktop_contract.dart -d linux') > dist/linux-acceptance.log 2>&1; then
+              printf '0' > dist/linux-acceptance-status.txt
+            else
+              printf '1' > dist/linux-acceptance-status.txt
+            fi
+            cat dist/linux-acceptance.log
+            if test -x target/release/qianbian; then cp target/release/qianbian dist/qianbian-linux-x86_64; fi
         - name: 保存Linux桌面与内存记录
           image: cnbcool/attachments:latest
           settings:
@@ -245,10 +248,17 @@ main:
               - dist/fluent-dark-overview.png
               - dist/fluent-settings.png
               - dist/fluent-compact.png
+              - dist/ui-backup-light.png
+              - dist/ui-backup-dark.png
+              - dist/ui-runtime-errors.json
+              - dist/linux-acceptance.log
+              - dist/linux-acceptance-status.txt
               - dist/ui-desktop.png
               - dist/ui-mobile.png
               - dist/ui-dark.png
               - dist/ui-login.png
+        - name: 确认Linux验收通过
+          script: test "$(cat dist/linux-acceptance-status.txt)" = 0
   api_trigger_windows:
     - name: windows-desktop
       runner:
