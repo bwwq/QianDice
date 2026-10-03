@@ -204,7 +204,11 @@ main:
               - dist/linux-desktop-memory.json
               - dist/fluent-linux-desktop.png
               - dist/fluent-overview.png
-              - dist/fluent-dark-chat.png
+                - dist/fluent-dark-chat.png
+                - dist/fluent-light-chat.png
+                - dist/fluent-dark-overview.png
+                - dist/fluent-settings.png
+                - dist/fluent-compact.png
               - dist/ui-desktop.png
               - dist/ui-mobile.png
               - dist/ui-dark.png

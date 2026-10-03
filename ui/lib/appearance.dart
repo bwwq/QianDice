@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:fluent_ui/fluent_ui.dart';
 
 /// Shared surface roles keep the desktop pages and controls visually consistent.
@@ -7,14 +8,150 @@ class WorkspacePalette {
   static WorkspacePalette of(BuildContext context) =>
       WorkspacePalette(FluentTheme.of(context).brightness == Brightness.dark);
 
-  Color get canvas => dark ? const Color(0xff1a1a1a) : const Color(0xffeeede8);
-  Color get section => dark ? const Color(0xff272727) : const Color(0xfff8f8f4);
-  Color get control => dark ? const Color(0xff343434) : const Color(0xffe5e4dd);
-  Color get text => dark ? const Color(0xfff0ead6) : const Color(0xff252521);
-  Color get muted => dark ? const Color(0xffb6b3a9) : const Color(0xff737269);
+  Color get canvas => dark ? const Color(0xff101829) : const Color(0xfff4f6fc);
+  Color get section => dark ? const Color(0xe6202b40) : const Color(0xe6ffffff);
+  Color get control => dark ? const Color(0xff29364d) : const Color(0xffedf1fa);
+  Color get text => dark ? const Color(0xffecf1ff) : const Color(0xff25304b);
+  Color get muted => dark ? const Color(0xffa1aec7) : const Color(0xff728099);
   Color get selected =>
-      dark ? const Color(0xff493d32) : const Color(0xffdedbcf);
-  Color get accent => text;
+      dark ? const Color(0xff344366) : const Color(0xffe8edff);
+  Color get accent => dark ? const Color(0xffa9b7ff) : const Color(0xff6676df);
+  Color get edge => dark ? const Color(0x18c0d1ff) : const Color(0xafffffff);
+  Color get success => dark ? const Color(0xff74dbc0) : const Color(0xff289d86);
+  List<Color> get backdrop => dark
+      ? const [Color(0xff182944), Color(0xff101829), Color(0xff1e2440)]
+      : const [Color(0xffe5ecfb), Color(0xfff6f8fc), Color(0xffeeebfc)];
+}
+
+class DiceMark extends StatelessWidget {
+  const DiceMark({super.key, this.size = 44});
+  final double size;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size, height: size,
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Color(0xff8fa9f5), Color(0xff6b70da)]),
+      borderRadius: BorderRadius.circular(size * .32),
+      boxShadow: [BoxShadow(color: const Color(0xff7889e5).withValues(alpha: .18), blurRadius: 20, offset: const Offset(0, 6))],
+    ),
+    child: Icon(FluentIcons.cube_shape, size: size * .52, color: Colors.white),
+  );
+}
+
+class StatusPill extends StatelessWidget {
+  const StatusPill({super.key, required this.label});
+  final String label;
+  @override
+  Widget build(BuildContext context) {
+    final colors = WorkspacePalette.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(color: colors.success.withValues(alpha: .09), borderRadius: BorderRadius.circular(20)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 6, height: 6, decoration: BoxDecoration(color: colors.success, shape: BoxShape.circle)),
+        const SizedBox(width: 8),
+        Text(label, style: TextStyle(fontSize: 12, color: colors.success, fontWeight: FontWeight.w500)),
+      ]),
+    );
+  }
+}
+
+class DesktopShell extends StatelessWidget {
+  const DesktopShell({super.key, required this.destinations, required this.selected,
+    required this.onSelect, required this.expanded, required this.onToggle,
+    required this.onTheme, required this.onRefresh, required this.busy, required this.child});
+  final List<(String, IconData)> destinations;
+  final int selected;
+  final ValueChanged<int> onSelect;
+  final bool expanded, busy;
+  final VoidCallback onToggle, onTheme, onRefresh;
+  final Widget child;
+
+  Widget navigation(BuildContext context, int index, bool open) {
+    final colors = WorkspacePalette.of(context);
+    final active = selected == index;
+    final button = SizedBox(height: 44, width: double.infinity, child: Button(
+      onPressed: () => onSelect(index),
+      style: ButtonStyle(
+        padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 14)),
+        foregroundColor: WidgetStatePropertyAll(active ? colors.accent : colors.muted),
+        backgroundColor: WidgetStateProperty.resolveWith((states) => active
+            ? colors.dark ? colors.selected : Colors.white.withValues(alpha: .9)
+            : states.contains(WidgetState.hovered) ? colors.control.withValues(alpha: .6) : Colors.transparent),
+        shape: WidgetStateProperty.resolveWith((states) => RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: states.contains(WidgetState.focused) ? colors.accent : Colors.transparent),
+        )),
+      ),
+      child: Row(mainAxisAlignment: open ? MainAxisAlignment.start : MainAxisAlignment.center, children: [
+        Icon(destinations[index].$2, size: 18),
+        if (open) ...[const SizedBox(width: 12), Flexible(child: Text(destinations[index].$1,
+          style: TextStyle(fontWeight: active ? FontWeight.w600 : FontWeight.w400)))],
+      ]),
+    ));
+    return Padding(padding: const EdgeInsets.only(bottom: 5), child: Semantics(selected: active,
+      child: open ? button : Tooltip(message: destinations[index].$1, child: button)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = WorkspacePalette.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft,
+          end: Alignment.bottomRight, colors: colors.backdrop)),
+      child: LayoutBuilder(builder: (context, constraints) {
+        final open = expanded && constraints.maxWidth >= 840;
+        return Padding(
+          padding: EdgeInsets.all(constraints.maxWidth < 600 ? 8 : 16),
+          child: Row(children: [
+            SizedBox(width: open ? 212 : 72, child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Container(
+                  decoration: BoxDecoration(color: colors.dark ? const Color(0x901d2c45) : const Color(0x90ffffff),
+                      border: Border.all(color: colors.edge), borderRadius: BorderRadius.circular(24)),
+                  child: Column(children: [
+                    Padding(padding: EdgeInsets.fromLTRB(open ? 18 : 12, 24, open ? 18 : 12, 24),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const DiceMark(size: 42),
+                        if (open) ...[const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [Text('千变', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700, color: colors.text)),
+                            Text('QIANBIAN', style: TextStyle(fontSize: 9, letterSpacing: 2, color: colors.muted))]))],
+                      ])),
+                    Expanded(child: ListView(padding: const EdgeInsets.symmetric(horizontal: 10), children: [
+                      for (final group in [('工作台', [0, 7]), ('跑团', [1, 2, 3, 4, 5]), ('管理', [6, 8])]) ...[
+                        if (open) Padding(padding: const EdgeInsets.fromLTRB(14, 12, 0, 10),
+                          child: Text(group.$1, style: TextStyle(fontSize: 11, color: colors.muted))),
+                        for (final index in group.$2) navigation(context, index, open),
+                        const SizedBox(height: 8),
+                      ],
+                    ])),
+                    Padding(padding: const EdgeInsets.all(12), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      if (open) ...[Tooltip(message: '切换主题', child: IconButton(icon: const Icon(FluentIcons.brightness, size: 17), onPressed: onTheme)), const Spacer()],
+                      Tooltip(message: open ? '收起侧栏' : '展开侧栏', child: IconButton(icon: const Icon(FluentIcons.global_nav_button, size: 17), onPressed: onToggle)),
+                    ])),
+                  ]),
+                ),
+              ),
+            )),
+            const SizedBox(width: 12),
+            Expanded(child: Column(children: [
+              Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 24), child: Row(children: [
+                Expanded(child: Text(destinations[selected].$1, style: TextStyle(fontSize: 27, fontWeight: FontWeight.w600, color: colors.text))),
+                if (constraints.maxWidth >= 640) const StatusPill(label: '后台运行中'),
+                const SizedBox(width: 10),
+                Tooltip(message: '刷新', child: IconButton(onPressed: busy ? null : onRefresh,
+                  icon: busy ? const SizedBox.square(dimension: 16, child: ProgressRing(strokeWidth: 2)) : const Icon(FluentIcons.refresh, size: 17))),
+                if (!open) Tooltip(message: '切换主题', child: IconButton(icon: const Icon(FluentIcons.brightness, size: 17), onPressed: onTheme)),
+              ])),
+              Expanded(child: child),
+            ])),
+          ]),
+        );
+      }),
+    );
+  }
 }
 
 class Surface extends StatelessWidget {
@@ -27,11 +164,14 @@ class Surface extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => Container(
     padding: padding,
-    backgroundColor: WorkspacePalette.of(context).section,
-    borderColor: Colors.transparent,
-    borderRadius: BorderRadius.circular(8),
+    decoration: BoxDecoration(
+      color: WorkspacePalette.of(context).section,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: WorkspacePalette.of(context).edge),
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .025), blurRadius: 24, offset: const Offset(0, 6))],
+    ),
     child: child,
   );
 }
@@ -40,13 +180,13 @@ FluentThemeData workspaceTheme(Brightness brightness) {
   final colors = WorkspacePalette(brightness == Brightness.dark);
   final base = Typography.fromBrightness(brightness: brightness);
   final shape = WidgetStatePropertyAll<OutlinedBorder>(
-    RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+    RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
   );
   return FluentThemeData(
     brightness: brightness,
     fontFamily: 'QianbianSans',
     accentColor: colors.accent.toAccentColor(),
-    activeColor: colors.dark ? colors.canvas : colors.section,
+    activeColor: colors.dark ? colors.canvas : Colors.white,
     inactiveColor: colors.text,
     scaffoldBackgroundColor: colors.canvas,
     acrylicBackgroundColor: colors.canvas,
@@ -55,7 +195,7 @@ FluentThemeData workspaceTheme(Brightness brightness) {
     menuColor: colors.control,
     typography: Typography.raw(
       title: base.title!.copyWith(
-        fontSize: 22,
+        fontSize: 28,
         height: 1.4,
         color: colors.text,
       ),
@@ -83,6 +223,9 @@ FluentThemeData workspaceTheme(Brightness brightness) {
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
+        backgroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.disabled)
+            ? colors.control : states.contains(WidgetState.hovered) ? colors.accent.withValues(alpha: .85) : colors.accent),
+        foregroundColor: WidgetStatePropertyAll(colors.dark ? const Color(0xff16213a) : Colors.white),
       ),
     ),
     navigationPaneTheme: NavigationPaneThemeData(

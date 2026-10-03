@@ -90,6 +90,7 @@ void main() {
 
       await tester.tap(find.text('模拟聊天').hitTestable().first);
       await tester.pumpAndSettle();
+      await capture('fluent-light-chat');
       final input = find.byWidgetPredicate(
         (widget) =>
             widget is TextBox && widget.placeholder == '输入指令，如 .r 1d100',
@@ -97,12 +98,14 @@ void main() {
       await tester.enterText(input, '.r 1d1 未发送草稿');
       await tester.tap(find.text('设置').hitTestable().first);
       await tester.pumpAndSettle();
+      await capture('fluent-settings');
       await tester.tap(find.byType(ComboBox<ThemeMode>).hitTestable());
       await tester.pumpAndSettle();
       await tester.tap(find.text('深色').hitTestable().last);
       await tester.pumpAndSettle();
       tester.view.physicalSize = const Size(700, 800);
       await tester.pumpAndSettle();
+      await capture('fluent-compact');
       tester.view.physicalSize = const Size(1280, 800);
       await tester.pumpAndSettle();
       await tester.tap(find.text('模拟聊天').hitTestable().first);
@@ -126,6 +129,9 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       await capture('fluent-dark-chat');
+      await tester.tap(find.text('概览').hitTestable().first);
+      await tester.pumpAndSettle();
+      await capture('fluent-dark-overview');
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       tester.view.resetPhysicalSize();
