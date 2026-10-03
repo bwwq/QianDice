@@ -18,6 +18,15 @@ qianbian restore data/backups/备份名称 --confirm
 
 数据路径默认相对于入口程序，不受终端工作目录影响。恢复前必须停止后台；恢复会回到备份时点，同时保留恢复前的完整备份。一个数据目录只允许一个后台运行。
 
+Linux 发布程序不需要 Rust 或编译器，添加执行权限后即可启动。已准备的独立协议验收工具也无需编译：
+
+```sh
+chmod +x dist/qianbian-linux-x86_64 dist/qianbian-protocol-check
+python3 scripts/verify-linux-functions.py --backend dist/qianbian-linux-x86_64 --runner dist/qianbian-protocol-check
+```
+
+该入口不调用 Cargo，四组测试并发启动隔离后台，收发记录写入 `dist/functional-report/`。Python 插件场景使用环境中已有的 Python 解释器。验收工具由云端构建另行提供，不属于后台启动依赖。
+
 ## QQ 连接
 
 在管理界面的「账号与群」配置账号，或停止后台后编辑 `data/config/server.json`。示例不包含实际令牌：
