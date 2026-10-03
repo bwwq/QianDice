@@ -638,26 +638,69 @@ class _WorkspaceState extends State<Workspace> {
       onSelect: (value) => setState(() => page = value),
       expanded: expanded,
       onToggle: () => setState(() => expanded = !expanded),
-      onTheme: () => widget.onTheme(FluentTheme.of(context).brightness == Brightness.dark ? ThemeMode.light : ThemeMode.dark),
+      onTheme: () => widget.onTheme(
+        FluentTheme.of(context).brightness == Brightness.dark
+            ? ThemeMode.light
+            : ThemeMode.dark,
+      ),
       onRefresh: refresh,
       busy: busy,
-      child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1120),
-        child: Column(children: [
-          if (error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: InfoBar(title: const Text('操作未完成'), content: Text(error!), severity: InfoBarSeverity.error,
-              onClose: () => setState(() => error = null))),
-          if (feedback != null) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: InfoBar(title: Text(feedback!), severity: InfoBarSeverity.success,
-              onClose: () => setState(() => feedback = null))),
-          Expanded(child: IndexedStack(key: pageContentKey, index: page, children: [
-            overview(), accounts(), characters(),
-            ContentPage(api: widget.api, kind: 'rules', edit: editJson, prompt: prompt),
-            ContentPage(api: widget.api, kind: 'decks', edit: editJson, prompt: prompt),
-            LogsPage(api: widget.api, worlds: worlds), pluginPage(), ChatPage(api: widget.api), settings(),
-          ])),
-        ]),
-      )),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1120),
+          child: Column(
+            children: [
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: InfoBar(
+                    title: const Text('操作未完成'),
+                    content: Text(error!),
+                    severity: InfoBarSeverity.error,
+                    onClose: () => setState(() => error = null),
+                  ),
+                ),
+              if (feedback != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: InfoBar(
+                    title: Text(feedback!),
+                    severity: InfoBarSeverity.success,
+                    onClose: () => setState(() => feedback = null),
+                  ),
+                ),
+              Expanded(
+                child: IndexedStack(
+                  key: pageContentKey,
+                  index: page,
+                  children: [
+                    overview(),
+                    accounts(),
+                    characters(),
+                    ContentPage(
+                      api: widget.api,
+                      kind: 'rules',
+                      edit: editJson,
+                      prompt: prompt,
+                    ),
+                    ContentPage(
+                      api: widget.api,
+                      kind: 'decks',
+                      edit: editJson,
+                      prompt: prompt,
+                    ),
+                    LogsPage(api: widget.api, worlds: worlds),
+                    pluginPage(),
+                    ChatPage(api: widget.api),
+                    settings(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     ),
   );
   Widget body(List<Widget> children) => ListView(
@@ -693,81 +736,270 @@ class _WorkspaceState extends State<Workspace> {
     final colors = WorkspacePalette.of(context);
     final connections = status['connections'] as List? ?? [];
     final notices = status['notices'] as List? ?? [];
-    final cardCount = worlds.fold<int>(0, (sum, world) => sum +
-        ((world['value']['players'] as Map?) ?? {}).values.fold<int>(0,
-            (count, player) => count + ((player['cards'] as Map?) ?? {}).length));
+    final cardCount = worlds.fold<int>(
+      0,
+      (sum, world) =>
+          sum +
+          ((world['value']['players'] as Map?) ?? {}).values.fold<int>(
+            0,
+            (count, player) => count + ((player['cards'] as Map?) ?? {}).length,
+          ),
+    );
     final metrics = [
       ('在线账号', '${connections.length}', 'group'),
       ('角色卡', '$cardCount', 'contact'),
-      ('启用插件', '${plugins.where((plugin) => plugin['enabled'] == true).length}', 'plug_connected'),
+      (
+        '启用插件',
+        '${plugins.where((plugin) => plugin['enabled'] == true).length}',
+        'plug_connected',
+      ),
       ('运行时间', '${((status['uptime_seconds'] ?? 0) / 60).floor()} 分钟', 'clock'),
     ];
-    Widget metric((String, String, String) value, double width) => SizedBox(width: width,
-      child: Row(children: [
-        Container(width: 42, height: 42, decoration: BoxDecoration(color: colors.selected, borderRadius: BorderRadius.circular(13)),
-          child: Icon(glyph(value.$3), size: 18, color: colors.accent)),
-        const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value.$1, style: TextStyle(fontSize: 12, color: colors.muted)),
-          const SizedBox(height: 5),
-          Text(value.$2, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w600, color: colors.text)),
-        ])),
-      ]));
-    final accountPanel = Surface(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [Text('账号连接', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: colors.text)),
-        const Spacer(), Text('OneBot 11', style: TextStyle(fontSize: 11, color: colors.muted))]),
-      const SizedBox(height: 24),
-      if (connections.isEmpty) ...[
-        Row(children: [
-          const DiceMark(size: 58), const SizedBox(width: 18),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('连接你的骰子', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: colors.text)),
-            const SizedBox(height: 8), Text('添加 QQ 账号，开始下一场跑团。', style: TextStyle(fontSize: 13, color: colors.muted)),
-          ])),
-        ]),
-        const SizedBox(height: 28),
-        commandButton('添加账号', () => setState(() => page = 1), icon: 'add', primary: true),
-      ] else ...[
-        for (final id in connections) ListTile(leading: Icon(glyph('check_mark'), color: colors.success), title: Text('$id'),
-          trailing: const StatusPill(label: '已连接')),
-        const SizedBox(height: 16),
-        commandButton('管理账号', () => setState(() => page = 1), icon: 'group'),
-      ],
-    ]));
-    final quickPanel = Surface(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(left: 4, bottom: 14), child: Text('常用', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: colors.text))),
-      for (final entry in [('模拟掷骰', 'game', 7), ('角色卡', 'contact', 2), ('跑团记录', 'reading_mode', 5)])
-        Padding(padding: const EdgeInsets.only(bottom: 8), child: Button(
-          onPressed: () => setState(() => page = entry.$3),
-          style: ButtonStyle(backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
-            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 4, vertical: 12))),
-          child: Row(children: [Icon(glyph(entry.$2), size: 17, color: colors.accent), const SizedBox(width: 12),
-            Expanded(child: Text(entry.$1)), Icon(glyph('chevron_right'), size: 10, color: colors.muted)]))),
-    ]));
+    Widget metric((String, String, String) value, double width) => SizedBox(
+      width: width,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: colors.selected,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(glyph(value.$3), size: 18, color: colors.accent),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value.$1,
+                  style: TextStyle(fontSize: 12, color: colors.muted),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  value.$2,
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w600,
+                    color: colors.text,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    final accountPanel = Surface(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                '账号连接',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: colors.text,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'OneBot 11',
+                style: TextStyle(fontSize: 11, color: colors.muted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (connections.isEmpty) ...[
+            Row(
+              children: [
+                const DiceMark(size: 58),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '连接你的骰子',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: colors.text,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '添加 QQ 账号，开始下一场跑团。',
+                        style: TextStyle(fontSize: 13, color: colors.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            commandButton(
+              '添加账号',
+              () => setState(() => page = 1),
+              icon: 'add',
+              primary: true,
+            ),
+          ] else ...[
+            for (final id in connections)
+              ListTile(
+                leading: Icon(glyph('check_mark'), color: colors.success),
+                title: Text('$id'),
+                trailing: const StatusPill(label: '已连接'),
+              ),
+            const SizedBox(height: 16),
+            commandButton(
+              '管理账号',
+              () => setState(() => page = 1),
+              icon: 'group',
+            ),
+          ],
+        ],
+      ),
+    );
+    final quickPanel = Surface(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 14),
+            child: Text(
+              '常用',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: colors.text,
+              ),
+            ),
+          ),
+          for (final entry in [
+            ('模拟掷骰', 'game', 7),
+            ('角色卡', 'contact', 2),
+            ('跑团记录', 'reading_mode', 5),
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Button(
+                onPressed: () => setState(() => page = entry.$3),
+                style: ButtonStyle(
+                  backgroundColor: const WidgetStatePropertyAll(
+                    Colors.transparent,
+                  ),
+                  padding: const WidgetStatePropertyAll(
+                    EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(glyph(entry.$2), size: 17, color: colors.accent),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(entry.$1)),
+                    Icon(glyph('chevron_right'), size: 10, color: colors.muted),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
     return body([
-      Surface(padding: const EdgeInsets.all(24), child: LayoutBuilder(builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 720 ? 4 : 2;
-        final width = (constraints.maxWidth - (columns - 1) * 16) / columns;
-        return Wrap(spacing: 16, runSpacing: 24, children: [for (final value in metrics) metric(value, width)]);
-      })),
+      Surface(
+        padding: const EdgeInsets.all(24),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 720 ? 4 : 2;
+            final width = (constraints.maxWidth - (columns - 1) * 16) / columns;
+            return Wrap(
+              spacing: 16,
+              runSpacing: 24,
+              children: [for (final value in metrics) metric(value, width)],
+            );
+          },
+        ),
+      ),
       const SizedBox(height: 20),
-      LayoutBuilder(builder: (context, constraints) => constraints.maxWidth >= 720
-        ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(flex: 2, child: accountPanel),
-            const SizedBox(width: 20), Expanded(child: quickPanel)])
-        : Column(children: [accountPanel, const SizedBox(height: 20), quickPanel])),
+      LayoutBuilder(
+        builder: (context, constraints) => constraints.maxWidth >= 720
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 2, child: accountPanel),
+                  const SizedBox(width: 20),
+                  Expanded(child: quickPanel),
+                ],
+              )
+            : Column(
+                children: [
+                  accountPanel,
+                  const SizedBox(height: 20),
+                  quickPanel,
+                ],
+              ),
+      ),
       const SizedBox(height: 24),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Row(children: [
-        Text('最近动态', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: colors.text)),
-        const Spacer(), Text('${notices.length} 条', style: TextStyle(fontSize: 12, color: colors.muted)),
-      ])),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            Text(
+              '最近动态',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: colors.text,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${notices.length} 条',
+              style: TextStyle(fontSize: 12, color: colors.muted),
+            ),
+          ],
+        ),
+      ),
       const SizedBox(height: 14),
-      if (notices.isEmpty) Padding(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 20),
-        child: Row(children: [Icon(glyph('info'), size: 16, color: colors.muted), const SizedBox(width: 10),
-          Text('暂无动态', style: TextStyle(color: colors.muted))]))
-      else Surface(child: Column(children: notices.reversed.take(30).map<Widget>((notice) => ListTile(
-        leading: Icon(glyph(notice['level'] == 'warning' ? 'info' : 'circle_fill'), size: 12, color: colors.accent),
-        title: Text('${notice['message']}'), subtitle: Text('${notice['time']}'),
-      )).toList())),
+      if (notices.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 20),
+          child: Row(
+            children: [
+              Icon(glyph('info'), size: 16, color: colors.muted),
+              const SizedBox(width: 10),
+              Text('暂无动态', style: TextStyle(color: colors.muted)),
+            ],
+          ),
+        )
+      else
+        Surface(
+          child: Column(
+            children: notices.reversed
+                .take(30)
+                .map<Widget>(
+                  (notice) => ListTile(
+                    leading: Icon(
+                      glyph(
+                        notice['level'] == 'warning' ? 'info' : 'circle_fill',
+                      ),
+                      size: 12,
+                      color: colors.accent,
+                    ),
+                    title: Text('${notice['message']}'),
+                    subtitle: Text('${notice['time']}'),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
     ]);
   }
 
@@ -1088,11 +1320,13 @@ class _ChatPageState extends State<ChatPage> {
       );
       if (mounted)
         setState(
-          () => messages.add(ChatEntry(
-            false,
-            '${result['public']}${result['private'] == null ? '' : '\n【仅自己可见】${result['private']}'}',
-            '千变',
-          )),
+          () => messages.add(
+            ChatEntry(
+              false,
+              '${result['public']}${result['private'] == null ? '' : '\n【仅自己可见】${result['private']}'}',
+              '千变',
+            ),
+          ),
         );
     } catch (e) {
       if (mounted) setState(() => messages.add(ChatEntry(false, '$e', '千变')));
@@ -1101,7 +1335,8 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           busy = false;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (scroll.hasClients) scroll.jumpTo(scroll.position.maxScrollExtent);
+            if (scroll.hasClients)
+              scroll.jumpTo(scroll.position.maxScrollExtent);
           });
           if (messages.length > 200)
             messages.removeRange(0, messages.length - 200);
@@ -1112,94 +1347,260 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> editIdentity() async {
     final player = TextEditingController(text: user.text);
     final room = TextEditingController(text: group.text);
-    final save = await showDialog<bool>(context: context, builder: (ctx) => ContentDialog(
-      title: const Text('练习身份'),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        field('玩家', TextBox(controller: player)), field('练习群', TextBox(controller: room)),
-      ]),
-      actions: [Button(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('保存'))],
-    ));
-    if (save == true && mounted) setState(() { user.text = player.text; group.text = room.text; });
-    player.dispose(); room.dispose();
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => ContentDialog(
+        title: const Text('练习身份'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            field('玩家', TextBox(controller: player)),
+            field('练习群', TextBox(controller: room)),
+          ],
+        ),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    if (save == true && mounted)
+      setState(() {
+        user.text = player.text;
+        group.text = room.text;
+      });
+    player.dispose();
+    room.dispose();
   }
 
   Widget messageTile(ChatEntry item) {
     final colors = WorkspacePalette.of(context);
     final avatar = item.outgoing
-      ? Container(width: 30, height: 30, decoration: BoxDecoration(color: colors.selected, shape: BoxShape.circle),
-          child: Icon(glyph('contact'), size: 14, color: colors.accent))
-      : const DiceMark(size: 30);
-    final stamp = '${item.time.hour.toString().padLeft(2, '0')}:${item.time.minute.toString().padLeft(2, '0')}';
-    final bubble = Flexible(child: Column(crossAxisAlignment: item.outgoing ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
-      Text('${item.sender}  ·  $stamp', style: TextStyle(fontSize: 11, color: colors.muted)),
-      const SizedBox(height: 8),
-      Container(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-        constraints: const BoxConstraints(maxWidth: 620),
-        decoration: BoxDecoration(color: item.outgoing ? colors.selected : colors.section,
-          borderRadius: BorderRadius.only(topLeft: const Radius.circular(16), topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(item.outgoing ? 16 : 5), bottomRight: Radius.circular(item.outgoing ? 5 : 16))),
-        child: SelectableText(item.text, style: TextStyle(fontSize: 14, height: 1.65, color: colors.text))),
-    ]));
-    return Padding(padding: const EdgeInsets.only(bottom: 24), child: Row(
-      mainAxisAlignment: item.outgoing ? MainAxisAlignment.end : MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: item.outgoing
-        ? [bubble, const SizedBox(width: 12), avatar]
-        : [avatar, const SizedBox(width: 12), bubble],
-    ));
+        ? Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: colors.selected,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(glyph('contact'), size: 14, color: colors.accent),
+          )
+        : const DiceMark(size: 30);
+    final stamp =
+        '${item.time.hour.toString().padLeft(2, '0')}:${item.time.minute.toString().padLeft(2, '0')}';
+    final bubble = Flexible(
+      child: Column(
+        crossAxisAlignment: item.outgoing
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${item.sender}  ·  $stamp',
+            style: TextStyle(fontSize: 11, color: colors.muted),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+            constraints: const BoxConstraints(maxWidth: 620),
+            decoration: BoxDecoration(
+              color: item.outgoing ? colors.selected : colors.section,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: Radius.circular(item.outgoing ? 16 : 5),
+                bottomRight: Radius.circular(item.outgoing ? 5 : 16),
+              ),
+            ),
+            child: SelectableText(
+              item.text,
+              style: TextStyle(fontSize: 14, height: 1.65, color: colors.text),
+            ),
+          ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Row(
+        mainAxisAlignment: item.outgoing
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: item.outgoing
+            ? [bubble, const SizedBox(width: 12), avatar]
+            : [avatar, const SizedBox(width: 12), bubble],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = WorkspacePalette.of(context);
-    return Padding(padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-      child: Column(children: [
-        Padding(padding: const EdgeInsets.only(bottom: 16), child: Row(children: [
-          Expanded(child: Button(onPressed: busy ? null : editIdentity,
-            style: ButtonStyle(backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
-              padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 4, vertical: 8))),
-            child: Row(children: [Icon(glyph('contact'), size: 15, color: colors.accent), const SizedBox(width: 8),
-              Flexible(child: Text('${user.text} · ${group.text}', overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, color: colors.muted))), const SizedBox(width: 8),
-              Icon(glyph('edit'), size: 12, color: colors.muted)]))),
-          const SizedBox(width: 12),
-          Text('仅练习 · 不发送到 QQ', style: TextStyle(fontSize: 11, color: colors.muted)),
-        ])),
-        Expanded(child: Container(
-          decoration: BoxDecoration(color: colors.section.withValues(alpha: colors.dark ? .45 : .55),
-            borderRadius: BorderRadius.circular(24), border: Border.all(color: colors.edge)),
-          child: messages.isEmpty
-            ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const DiceMark(size: 64), const SizedBox(height: 24),
-                Text('试一条指令', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w600, color: colors.text)),
-                const SizedBox(height: 24),
-                Wrap(spacing: 10, runSpacing: 10, alignment: WrapAlignment.center, children: [
-                  for (final command in ['.r 1d100', '.coc', '.help']) commandButton(command, () => input.text = command),
-                ]),
-              ])))
-            : Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 840),
-                child: ListView.builder(controller: scroll, padding: const EdgeInsets.fromLTRB(24, 28, 24, 4),
-                  itemCount: messages.length, itemBuilder: (context, index) => messageTile(messages[index])))),
-        )),
-        const SizedBox(height: 16),
-        Surface(padding: const EdgeInsets.all(8), child: Row(children: [
-          const SizedBox(width: 8),
-          Expanded(child: TextBox(controller: input, onSubmitted: (_) => send(), placeholder: '输入指令，如 .r 1d100',
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            decoration: const WidgetStatePropertyAll(BoxDecoration(color: Colors.transparent, border: Border.fromBorderSide(BorderSide.none))),
-            foregroundDecoration: const WidgetStatePropertyAll(BoxDecoration(border: Border.fromBorderSide(BorderSide.none))))),
-          const SizedBox(width: 8),
-          FilledButton(onPressed: busy ? null : send, child: busy
-              ? const SizedBox.square(dimension: 16, child: ProgressRing(strokeWidth: 2))
-              : const Text('发送')),
-        ])),
-        const SizedBox(height: 8),
-        Align(alignment: Alignment.centerRight, child: Text('Enter 发送', style: TextStyle(fontSize: 10, color: colors.muted))),
-      ]),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Button(
+                    onPressed: busy ? null : editIdentity,
+                    style: ButtonStyle(
+                      backgroundColor: const WidgetStatePropertyAll(
+                        Colors.transparent,
+                      ),
+                      padding: const WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(glyph('contact'), size: 15, color: colors.accent),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '${user.text} · ${group.text}',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 13, color: colors.muted),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(glyph('edit'), size: 12, color: colors.muted),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '仅练习 · 不发送到 QQ',
+                  style: TextStyle(fontSize: 11, color: colors.muted),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: colors.section.withValues(
+                  alpha: colors.dark ? .45 : .55,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: colors.edge),
+              ),
+              child: messages.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const DiceMark(size: 64),
+                            const SizedBox(height: 24),
+                            Text(
+                              '试一条指令',
+                              style: TextStyle(
+                                fontSize: 23,
+                                fontWeight: FontWeight.w600,
+                                color: colors.text,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                for (final command in [
+                                  '.r 1d100',
+                                  '.coc',
+                                  '.help',
+                                ])
+                                  commandButton(
+                                    command,
+                                    () => input.text = command,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 840),
+                        child: ListView.builder(
+                          controller: scroll,
+                          padding: const EdgeInsets.fromLTRB(24, 28, 24, 4),
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) =>
+                              messageTile(messages[index]),
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Surface(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: [
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextBox(
+                    controller: input,
+                    onSubmitted: (_) => send(),
+                    placeholder: '输入指令，如 .r 1d100',
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 14,
+                    ),
+                    decoration: const WidgetStatePropertyAll(
+                      BoxDecoration(
+                        color: Colors.transparent,
+                        border: Border.fromBorderSide(BorderSide.none),
+                      ),
+                    ),
+                    foregroundDecoration: const WidgetStatePropertyAll(
+                      BoxDecoration(
+                        border: Border.fromBorderSide(BorderSide.none),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: busy ? null : send,
+                  child: busy
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: ProgressRing(strokeWidth: 2),
+                        )
+                      : const Text('发送'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Enter 发送',
+              style: TextStyle(fontSize: 10, color: colors.muted),
+            ),
+          ),
+        ],
+      ),
     );
   }
-
 }
 
 typedef JsonEditor =

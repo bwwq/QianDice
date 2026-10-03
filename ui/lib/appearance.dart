@@ -28,12 +28,22 @@ class DiceMark extends StatelessWidget {
   final double size;
   @override
   Widget build(BuildContext context) => Container(
-    width: size, height: size,
+    width: size,
+    height: size,
     decoration: BoxDecoration(
-      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xff8fa9f5), Color(0xff6b70da)]),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xff8fa9f5), Color(0xff6b70da)],
+      ),
       borderRadius: BorderRadius.circular(size * .32),
-      boxShadow: [BoxShadow(color: const Color(0xff7889e5).withValues(alpha: .18), blurRadius: 20, offset: const Offset(0, 6))],
+      boxShadow: [
+        BoxShadow(
+          color: const Color(0xff7889e5).withValues(alpha: .18),
+          blurRadius: 20,
+          offset: const Offset(0, 6),
+        ),
+      ],
     ),
     child: Icon(FluentIcons.cube_shape, size: size * .52, color: Colors.white),
   );
@@ -47,20 +57,49 @@ class StatusPill extends StatelessWidget {
     final colors = WorkspacePalette.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: colors.success.withValues(alpha: .09), borderRadius: BorderRadius.circular(20)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 6, height: 6, decoration: BoxDecoration(color: colors.success, shape: BoxShape.circle)),
-        const SizedBox(width: 8),
-        Text(label, style: TextStyle(fontSize: 12, color: colors.success, fontWeight: FontWeight.w500)),
-      ]),
+      decoration: BoxDecoration(
+        color: colors.success.withValues(alpha: .09),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: colors.success,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: colors.success,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class DesktopShell extends StatelessWidget {
-  const DesktopShell({super.key, required this.destinations, required this.selected,
-    required this.onSelect, required this.expanded, required this.onToggle,
-    required this.onTheme, required this.onRefresh, required this.busy, required this.child});
+  const DesktopShell({
+    super.key,
+    required this.destinations,
+    required this.selected,
+    required this.onSelect,
+    required this.expanded,
+    required this.onToggle,
+    required this.onTheme,
+    required this.onRefresh,
+    required this.busy,
+    required this.child,
+  });
   final List<(String, IconData)> destinations;
   final int selected;
   final ValueChanged<int> onSelect;
@@ -71,85 +110,272 @@ class DesktopShell extends StatelessWidget {
   Widget navigation(BuildContext context, int index, bool open) {
     final colors = WorkspacePalette.of(context);
     final active = selected == index;
-    final button = SizedBox(height: 44, width: double.infinity, child: Button(
-      onPressed: () => onSelect(index),
-      style: ButtonStyle(
-        padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 14)),
-        foregroundColor: WidgetStatePropertyAll(active ? colors.accent : colors.muted),
-        backgroundColor: WidgetStateProperty.resolveWith((states) => active
-            ? colors.dark ? colors.selected : Colors.white.withValues(alpha: .9)
-            : states.contains(WidgetState.hovered) ? colors.control.withValues(alpha: .6) : Colors.transparent),
-        shape: WidgetStateProperty.resolveWith((states) => RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: states.contains(WidgetState.focused) ? colors.accent : Colors.transparent),
-        )),
+    final button = SizedBox(
+      height: 44,
+      width: double.infinity,
+      child: Button(
+        onPressed: () => onSelect(index),
+        style: ButtonStyle(
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 14),
+          ),
+          foregroundColor: WidgetStatePropertyAll(
+            active ? colors.accent : colors.muted,
+          ),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => active
+                ? colors.dark
+                      ? colors.selected
+                      : Colors.white.withValues(alpha: .9)
+                : states.contains(WidgetState.hovered)
+                ? colors.control.withValues(alpha: .6)
+                : Colors.transparent,
+          ),
+          shape: WidgetStateProperty.resolveWith(
+            (states) => RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: states.contains(WidgetState.focused)
+                    ? colors.accent
+                    : Colors.transparent,
+              ),
+            ),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: open
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.center,
+          children: [
+            Icon(destinations[index].$2, size: 18),
+            if (open) ...[
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  destinations[index].$1,
+                  style: TextStyle(
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
-      child: Row(mainAxisAlignment: open ? MainAxisAlignment.start : MainAxisAlignment.center, children: [
-        Icon(destinations[index].$2, size: 18),
-        if (open) ...[const SizedBox(width: 12), Flexible(child: Text(destinations[index].$1,
-          style: TextStyle(fontWeight: active ? FontWeight.w600 : FontWeight.w400)))],
-      ]),
-    ));
-    return Padding(padding: const EdgeInsets.only(bottom: 5), child: Semantics(selected: active,
-      child: open ? button : Tooltip(message: destinations[index].$1, child: button)));
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Semantics(
+        selected: active,
+        child: open
+            ? button
+            : Tooltip(message: destinations[index].$1, child: button),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = WorkspacePalette.of(context);
     return DecoratedBox(
-      decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft,
-          end: Alignment.bottomRight, colors: colors.backdrop)),
-      child: LayoutBuilder(builder: (context, constraints) {
-        final open = expanded && constraints.maxWidth >= 840;
-        return Padding(
-          padding: EdgeInsets.all(constraints.maxWidth < 600 ? 8 : 16),
-          child: Row(children: [
-            SizedBox(width: open ? 212 : 72, child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: Container(
-                  decoration: BoxDecoration(color: colors.dark ? const Color(0x901d2c45) : const Color(0x90ffffff),
-                      border: Border.all(color: colors.edge), borderRadius: BorderRadius.circular(24)),
-                  child: Column(children: [
-                    Padding(padding: EdgeInsets.fromLTRB(open ? 18 : 12, 24, open ? 18 : 12, 24),
-                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        const DiceMark(size: 42),
-                        if (open) ...[const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [Text('千变', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700, color: colors.text)),
-                            Text('QIANBIAN', style: TextStyle(fontSize: 9, letterSpacing: 2, color: colors.muted))]))],
-                      ])),
-                    Expanded(child: ListView(padding: const EdgeInsets.symmetric(horizontal: 10), children: [
-                      for (final group in [('工作台', [0, 7]), ('跑团', [1, 2, 3, 4, 5]), ('管理', [6, 8])]) ...[
-                        if (open) Padding(padding: const EdgeInsets.fromLTRB(14, 12, 0, 10),
-                          child: Text(group.$1, style: TextStyle(fontSize: 11, color: colors.muted))),
-                        for (final index in group.$2) navigation(context, index, open),
-                        const SizedBox(height: 8),
-                      ],
-                    ])),
-                    Padding(padding: const EdgeInsets.all(12), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      if (open) ...[Tooltip(message: '切换主题', child: IconButton(icon: const Icon(FluentIcons.brightness, size: 17), onPressed: onTheme)), const Spacer()],
-                      Tooltip(message: open ? '收起侧栏' : '展开侧栏', child: IconButton(icon: const Icon(FluentIcons.global_nav_button, size: 17), onPressed: onToggle)),
-                    ])),
-                  ]),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors.backdrop,
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final open = expanded && constraints.maxWidth >= 840;
+          return Padding(
+            padding: EdgeInsets.all(constraints.maxWidth < 600 ? 8 : 16),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: open ? 212 : 72,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: colors.dark
+                              ? const Color(0x901d2c45)
+                              : const Color(0x90ffffff),
+                          border: Border.all(color: colors.edge),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                open ? 18 : 12,
+                                24,
+                                open ? 18 : 12,
+                                24,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const DiceMark(size: 42),
+                                  if (open) ...[
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '千变',
+                                            style: TextStyle(
+                                              fontSize: 23,
+                                              fontWeight: FontWeight.w700,
+                                              color: colors.text,
+                                            ),
+                                          ),
+                                          Text(
+                                            'QIANBIAN',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              letterSpacing: 2,
+                                              color: colors.muted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: ListView(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                children: [
+                                  for (final group in [
+                                    ('工作台', [0, 7]),
+                                    ('跑团', [1, 2, 3, 4, 5]),
+                                    ('管理', [6, 8]),
+                                  ]) ...[
+                                    if (open)
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          14,
+                                          12,
+                                          0,
+                                          10,
+                                        ),
+                                        child: Text(
+                                          group.$1,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: colors.muted,
+                                          ),
+                                        ),
+                                      ),
+                                    for (final index in group.$2)
+                                      navigation(context, index, open),
+                                    const SizedBox(height: 8),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (open) ...[
+                                    Tooltip(
+                                      message: '切换主题',
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          FluentIcons.brightness,
+                                          size: 17,
+                                        ),
+                                        onPressed: onTheme,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                  ],
+                                  Tooltip(
+                                    message: open ? '收起侧栏' : '展开侧栏',
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        FluentIcons.global_nav_button,
+                                        size: 17,
+                                      ),
+                                      onPressed: onToggle,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            )),
-            const SizedBox(width: 12),
-            Expanded(child: Column(children: [
-              Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 24), child: Row(children: [
-                Expanded(child: Text(destinations[selected].$1, style: TextStyle(fontSize: 27, fontWeight: FontWeight.w600, color: colors.text))),
-                if (constraints.maxWidth >= 640) const StatusPill(label: '后台运行中'),
-                const SizedBox(width: 10),
-                Tooltip(message: '刷新', child: IconButton(onPressed: busy ? null : onRefresh,
-                  icon: busy ? const SizedBox.square(dimension: 16, child: ProgressRing(strokeWidth: 2)) : const Icon(FluentIcons.refresh, size: 17))),
-                if (!open) Tooltip(message: '切换主题', child: IconButton(icon: const Icon(FluentIcons.brightness, size: 17), onPressed: onTheme)),
-              ])),
-              Expanded(child: child),
-            ])),
-          ]),
-        );
-      }),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                destinations[selected].$1,
+                                style: TextStyle(
+                                  fontSize: 27,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.text,
+                                ),
+                              ),
+                            ),
+                            if (constraints.maxWidth >= 640)
+                              const StatusPill(label: '后台运行中'),
+                            const SizedBox(width: 10),
+                            Tooltip(
+                              message: '刷新',
+                              child: IconButton(
+                                onPressed: busy ? null : onRefresh,
+                                icon: busy
+                                    ? const SizedBox.square(
+                                        dimension: 16,
+                                        child: ProgressRing(strokeWidth: 2),
+                                      )
+                                    : const Icon(FluentIcons.refresh, size: 17),
+                              ),
+                            ),
+                            if (!open)
+                              Tooltip(
+                                message: '切换主题',
+                                child: IconButton(
+                                  icon: const Icon(
+                                    FluentIcons.brightness,
+                                    size: 17,
+                                  ),
+                                  onPressed: onTheme,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Expanded(child: child),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -170,7 +396,13 @@ class Surface extends StatelessWidget {
       color: WorkspacePalette.of(context).section,
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: WorkspacePalette.of(context).edge),
-      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .025), blurRadius: 24, offset: const Offset(0, 6))],
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: .025),
+          blurRadius: 24,
+          offset: const Offset(0, 6),
+        ),
+      ],
     ),
     child: child,
   );
@@ -223,9 +455,16 @@ FluentThemeData workspaceTheme(Brightness brightness) {
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
-        backgroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.disabled)
-            ? colors.control : states.contains(WidgetState.hovered) ? colors.accent.withValues(alpha: .85) : colors.accent),
-        foregroundColor: WidgetStatePropertyAll(colors.dark ? const Color(0xff16213a) : Colors.white),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? colors.control
+              : states.contains(WidgetState.hovered)
+              ? colors.accent.withValues(alpha: .85)
+              : colors.accent,
+        ),
+        foregroundColor: WidgetStatePropertyAll(
+          colors.dark ? const Color(0xff16213a) : Colors.white,
+        ),
       ),
     ),
     navigationPaneTheme: NavigationPaneThemeData(
