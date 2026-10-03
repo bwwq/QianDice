@@ -75,6 +75,7 @@ class _BackupSettingsState extends State<BackupSettings> {
       Text(label, style: TextStyle(fontSize: 13, color: colors.text)),
       const SizedBox(height: 8),
       TextBox(controller: controls[key], placeholder: placeholder, obscureText: secret,
+        enabled: !busy && status['running'] != true,
         keyboardType: number ? TextInputType.number : TextInputType.text,
         onChanged: (_) => change(() {})),
     ]);
@@ -91,6 +92,12 @@ class _BackupSettingsState extends State<BackupSettings> {
     final value = Map<String, dynamic>.from(jsonDecode(jsonEncode(config)));
     value['interval_minutes'] = int.tryParse(controls['interval_minutes']!.text);
     value['keep'] = int.tryParse(controls['keep']!.text);
+    if (value['interval_minutes'] == null || value['interval_minutes'] < 1 || value['interval_minutes'] > 525600) {
+      throw Exception('备份间隔应为 1–525600 分钟');
+    }
+    if (value['keep'] == null || value['keep'] < 1 || value['keep'] > 1000) {
+      throw Exception('保留数量应为 1–1000 次');
+    }
     for (final name in ['webdav', 's3']) {
       for (final item in controls.entries.where((e) => e.key.startsWith('$name.'))) {
         value[name][item.key.substring(name.length + 1)] = item.value.text;
@@ -111,6 +118,7 @@ class _BackupSettingsState extends State<BackupSettings> {
     final colors = WorkspacePalette.of(context);
     final value = config!;
     final disabled = busy || status['running'] == true;
+    final selected = (value['contents'] as Map).values.any((v) => v == true);
     final last = status['last_result'] as Map? ?? {};
     final next = status['next_at'] is num ? DateTime.fromMillisecondsSinceEpoch((status['next_at'] as num).toInt() * 1000).toLocal().toString().split('.').first : '—';
     Widget separator() => Padding(padding: const EdgeInsets.symmetric(vertical: 18), child: Container(height: 1, color: colors.edge));
@@ -148,11 +156,11 @@ class _BackupSettingsState extends State<BackupSettings> {
       ],
       const SizedBox(height: 20),
       Wrap(spacing: 10, runSpacing: 10, children: [
-        FilledButton(onPressed: disabled || !dirty ? null : () => run(() async {
+        FilledButton(onPressed: disabled || !dirty || !selected ? null : () => run(() async {
           await widget.request('/config', method: 'PUT', body: {'backup': edited()});
           await load(); await poll(); await widget.notify('备份设置已保存');
         }), child: const Text('保存备份设置')),
-        Button(onPressed: disabled ? null : () => create(false), child: const Text('立即备份')),
+        Button(onPressed: disabled || !selected ? null : () => create(false), child: const Text('立即备份')),
         Button(onPressed: disabled ? null : () => create(true), child: const Text('完整备份')),
       ]),
       const SizedBox(height: 12),

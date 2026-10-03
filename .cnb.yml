@@ -13,6 +13,7 @@ main:
         - name: 检查备份依赖与接口
           script: |
             mkdir -p dist ui/assets/fonts
+            rustup component add rustfmt
             curl -fL 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt' -o ui/assets/fonts/OFL.txt
             if (rustfmt --edition 2024 --config skip_children=true src/backup.rs src/store.rs src/server.rs src/portable.rs src/main.rs src/lib.rs && cargo check --all-targets && cd ui && flutter pub get --enforce-lockfile && dart format lib/backup_settings.dart lib/main.dart && flutter analyze --no-fatal-infos) > dist/backup-prepare.log 2>&1; then
               printf '0' > dist/backup-prepare-status.txt

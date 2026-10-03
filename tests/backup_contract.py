@@ -15,6 +15,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import urllib.parse
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -71,11 +72,22 @@ class Remote(BaseHTTPRequestHandler):
             if self.path.startswith('/failure/'):
                 self.respond(503); return
             assert self.headers['Content-Type'] == 'application/zip'
-            assert not self.path.endswith('.partial'), 'incomplete remote archive'
+            assert self.path.endswith('.zip') if self.path.startswith('/bucket/') else self.path.endswith('.zip.partial')
             with zipfile.ZipFile(io.BytesIO(body)) as archive:
                 assert 'manifest.json' in archive.namelist()
             files[self.path] = body
             self.respond(200 if self.path.startswith('/bucket/') else 201)
+        except Exception as e:
+            violations.append(str(e)); self.respond(400)
+
+    def do_MOVE(self):
+        try:
+            self.check()
+            target = urllib.parse.urlparse(self.headers['Destination']).path
+            assert self.headers['Overwrite'] == 'F' and self.path.endswith('.zip.partial')
+            assert target not in files and target.endswith('.zip')
+            files[target] = files.pop(self.path)
+            self.respond(201)
         except Exception as e:
             violations.append(str(e)); self.respond(400)
 
@@ -215,6 +227,7 @@ try:
     assert (root / 'data/backups' / failed['id'] / 'manifest.json').exists()
     assert api('/backups/status')['next_at'] > time.time()
     assert not violations, violations
+    assert not any(name.endswith('.partial') for name in files)
     stop()
     print('PASS: selective snapshot/restore, scheduled backup persistence, local/remote retention, WebDAV auth, S3 SigV4 and streaming ZIP, secret redaction, upload failure keeps local backup')
 finally:

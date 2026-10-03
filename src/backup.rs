@@ -261,6 +261,15 @@ impl Backups {
                             uploads.push(json!({"target":target,"status":"success"}));
                         }
                         Err(e) => {
+                            if target == "webdav" {
+                                if let Ok(mut base) = endpoint(&cfg.webdav.url) {
+                                    if !base.path().ends_with('/') { base.set_path(&format!("{}/", base.path())); }
+                                    if let Ok(temp) = base.join(&format!("{id}.zip.partial")) {
+                                        let _ = self.client.delete(temp).timeout(Duration::from_secs(5))
+                                            .basic_auth(&cfg.webdav.username, Some(&cfg.webdav.password)).send().await;
+                                    }
+                                }
+                            }
                             app.emit("error", format!("{target} 上传失败，本地备份已保留：{e}"));
                             uploads.push(json!({"target":target,"status":"failed","message":e.to_string()}));
                         }
@@ -300,10 +309,16 @@ impl Backups {
                 ensure!([201, 405].contains(&response.status().as_u16()), "WebDAV 创建目录失败（HTTP {}）", response.status().as_u16());
             }
             let url = base.join(&format!("{id}.zip"))?;
-            let response = self.client.put(url).basic_auth(&cfg.webdav.username, Some(&cfg.webdav.password))
+            let temporary = base.join(&format!("{id}.zip.partial"))?;
+            let response = self.client.put(temporary.clone()).basic_auth(&cfg.webdav.username, Some(&cfg.webdav.password))
                 .header("content-type", "application/zip").header("content-length", length).body(body).send().await
                 .map_err(|_| anyhow::anyhow!("WebDAV 上传连接失败或超时"))?;
             ensure!([200, 201, 204].contains(&response.status().as_u16()), "WebDAV 上传失败（HTTP {}）", response.status().as_u16());
+            let moved = self.client.request(Method::from_bytes(b"MOVE")?, temporary)
+                .header("destination", url.as_str()).header("overwrite", "F")
+                .basic_auth(&cfg.webdav.username, Some(&cfg.webdav.password)).send().await
+                .map_err(|_| anyhow::anyhow!("WebDAV 完成上传时连接失败"))?;
+            ensure!([201,204].contains(&moved.status().as_u16()), "WebDAV 完成上传失败（HTTP {}）", moved.status().as_u16());
             Ok(format!("{id}.zip"))
         } else {
             let key = format!("{}{id}.zip", if cfg.s3.prefix.is_empty() { String::new() } else { format!("{}/", cfg.s3.prefix.trim_matches('/')) });
