@@ -697,7 +697,7 @@ class _WorkspaceState extends State<Workspace> {
           ? PaneDisplayMode.expanded
           : PaneDisplayMode.compact,
       header: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+        padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Row(children: [
           Icon(glyph('circle_fill'), size: 7, color: WorkspacePalette.of(context).muted),
           const SizedBox(width: 8),

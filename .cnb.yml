@@ -156,8 +156,11 @@ main:
             else
               fluent_status=$?
             fi
-            printf '%s' "$fluent_status" > dist/fluent-analysis-status.txt
-            cat dist/fluent-analysis.txt
+              printf '%s' "$fluent_status" > dist/fluent-analysis-status.txt
+              cat dist/fluent-analysis.txt
+              cp ui/lib/main.dart dist/fluent-main.dart
+              cp ui/lib/appearance.dart dist/fluent-appearance.dart
+              cp ui/integration_test/desktop_contract.dart dist/fluent-contract.dart
         - name: 保存依赖与诊断
           image: cnbcool/attachments:latest
           settings:
@@ -166,6 +169,9 @@ main:
                 - ui/lib/main.dart
                 - ui/lib/appearance.dart
                 - ui/integration_test/desktop_contract.dart
+                - dist/fluent-main.dart
+                - dist/fluent-appearance.dart
+                - dist/fluent-contract.dart
               - dist/fluent-analysis.txt
               - dist/fluent-analysis-status.txt
         - name: 确认静态检查通过
