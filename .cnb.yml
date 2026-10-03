@@ -144,6 +144,7 @@ main:
           image: cnbcool/attachments:latest
           settings:
             attachments:
+              - dist/qianbian-linux-x86_64
               - dist/qianbian-linux-ui-x86_64.tar.gz
               - dist/linux-desktop-memory.json
   api_trigger_windows:
