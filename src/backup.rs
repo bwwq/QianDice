@@ -235,7 +235,7 @@ impl Backups {
         };
         app.emit("backup", format!("本地备份完成：{id}"));
         let directory = app.paths.data.join("backups").join(&id);
-        let created_at = chrono::Utc::now().to_rfc3339();
+        let created_at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, true);
         let mut uploads = vec![];
         if cfg.webdav.enabled || cfg.s3.enabled {
             let archive = directory.with_extension("zip");

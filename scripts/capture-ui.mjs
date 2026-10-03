@@ -52,6 +52,20 @@ try {
   await page.setViewportSize({width: 1440, height: 960});
   await page.getByRole('button', {name: '切换深浅主题', exact: true}).click();
   await page.screenshot({path: 'dist/ui-dark.png'});
+  await page.locator('nav').getByRole('button', {name: '设置', exact: true}).click();
+  await page.getByLabel('间隔（分钟）', {exact: true}).fill('120');
+  await page.getByLabel('插件与数据', {exact: true}).uncheck();
+  await page.getByRole('button', {name: '保存备份设置', exact: true}).click();
+  await page.getByRole('button', {name: '保存备份设置', exact: true}).waitFor({state: 'visible'});
+  await page.waitForFunction(async () => {
+    const cfg = await (await fetch('/api/v1/config')).json();
+    return cfg.backup?.interval_minutes === 120 && cfg.backup?.contents.plugins === false;
+  });
+  await page.screenshot({path: 'dist/ui-backup-dark.png', fullPage: true});
+  await page.getByRole('button', {name: '切换深浅主题', exact: true}).click();
+  await page.screenshot({path: 'dist/ui-backup-light.png', fullPage: true});
+  await page.getByRole('button', {name: '完整备份', exact: true}).click();
+  await page.waitForFunction(async () => (await (await fetch('/api/v1/backups')).json()).length > 0);
   await writeFile('dist/ui-dom.html', await page.content());
   const processes = [];
   for (const pid of await readdir('/proc')) {

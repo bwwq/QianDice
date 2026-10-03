@@ -1287,71 +1287,69 @@ class _WorkspaceState extends State<Workspace> {
                       ),
               ),
             ]),
-            group(
-              '数据与备份',
-              [
-                Text(
-                  '数据目录',
-                  style: TextStyle(fontSize: 12, color: colors.muted),
+            group('数据与备份', [
+              Text('数据目录', style: TextStyle(fontSize: 12, color: colors.muted)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                decoration: BoxDecoration(
+                  color: colors.control.withValues(alpha: .65),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                  decoration: BoxDecoration(
-                    color: colors.control.withValues(alpha: .65),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SelectableText(
-                          directory,
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 1.5,
-                            color: colors.text,
-                          ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SelectableText(
+                        directory,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.5,
+                          color: colors.text,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Tooltip(
-                        message: '复制路径',
-                        child: IconButton(
-                          icon: const Icon(FluentIcons.copy, size: 15),
-                          onPressed: directory.isEmpty
-                              ? null
-                              : () => action(() async {
-                                  await Clipboard.setData(
-                                    ClipboardData(text: directory),
-                                  );
-                                  await message('路径已复制');
-                                }),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                BackupSettings(request: widget.api.request, refresh: refresh, notify: message),
-                if (backups.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  for (final backup in backups.reversed.take(10))
-                    ListTile(
-                      leading: Icon(glyph('archive'), size: 16),
-                      title: Text('$backup'),
                     ),
-                ],
-                const SizedBox(height: 14),
-                Text(
-                  '恢复前停止后台。自定义备份仅恢复所选内容，并另存当前数据。',
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.5,
-                    color: colors.muted,
-                  ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: '复制路径',
+                      child: IconButton(
+                        icon: const Icon(FluentIcons.copy, size: 15),
+                        onPressed: directory.isEmpty
+                            ? null
+                            : () => action(() async {
+                                await Clipboard.setData(
+                                  ClipboardData(text: directory),
+                                );
+                                await message('路径已复制');
+                              }),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 20),
+              BackupSettings(
+                request: widget.api.request,
+                refresh: refresh,
+                notify: message,
+              ),
+              if (backups.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                for (final backup in backups.reversed.take(10))
+                  ListTile(
+                    leading: Icon(glyph('archive'), size: 16),
+                    title: Text('$backup'),
+                  ),
               ],
-            ),
+              const SizedBox(height: 14),
+              Text(
+                '恢复前停止后台。自定义备份仅恢复所选内容，并另存当前数据。',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.5,
+                  color: colors.muted,
+                ),
+              ),
+            ]),
             group('运行', [
               Text(
                 '千变 ${status['version'] ?? ''} · ${status['platform'] ?? ''}',

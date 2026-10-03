@@ -1,5 +1,5 @@
-pub mod dice;
 pub mod backup;
+pub mod dice;
 pub mod files;
 pub mod game;
 pub mod launcher;

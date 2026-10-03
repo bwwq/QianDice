@@ -129,7 +129,9 @@ main:
               - dist/ui-compact.png
               - dist/ui-mobile.png
               - dist/ui-dark.png
-              - dist/ui-login.png
+                - dist/ui-login.png
+                - dist/ui-backup-light.png
+                - dist/ui-backup-dark.png
               - dist/ui-runtime-errors.json
               - dist/ui-dom.html
               - dist/linux-memory.json

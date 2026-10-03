@@ -843,7 +843,11 @@ async fn content_delete(
 async fn backups(State(app): State<Arc<App>>) -> ApiResult<Value> {
     let list = std::fs::read_dir(app.paths.data.join("backups"))?
         .filter_map(|e| e.ok())
-        .filter(|e| !e.file_name().to_string_lossy().starts_with('.') && e.file_type().is_ok_and(|t| t.is_dir() && !t.is_symlink()) && e.path().join("manifest.json").exists())
+        .filter(|e| {
+            !e.file_name().to_string_lossy().starts_with('.')
+                && e.file_type().is_ok_and(|t| t.is_dir() && !t.is_symlink())
+                && e.path().join("manifest.json").exists()
+        })
         .map(|e| e.file_name().to_string_lossy().to_string())
         .collect::<Vec<_>>();
     Ok(Json(json!(list)))
@@ -854,8 +858,14 @@ async fn backup_status(State(app): State<Arc<App>>) -> Json<Value> {
 async fn backup(State(app): State<Arc<App>>, body: axum::body::Bytes) -> ApiResult<Value> {
     #[derive(Deserialize, Default)]
     #[serde(deny_unknown_fields)]
-    struct Request { contents: Option<crate::backup::Contents> }
-    let input: Request = if body.is_empty() { Request::default() } else { serde_json::from_slice(&body)? };
+    struct Request {
+        contents: Option<crate::backup::Contents>,
+    }
+    let input: Request = if body.is_empty() {
+        Request::default()
+    } else {
+        serde_json::from_slice(&body)?
+    };
     Ok(Json(app.backups.create(&app, false, input.contents).await?))
 }
 #[derive(Deserialize)]

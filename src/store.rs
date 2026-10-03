@@ -7,6 +7,10 @@ use std::{fs, path::Path, sync::Mutex};
 pub struct Store {
     conn: Mutex<Connection>,
 }
+struct BackupStage(std::path::PathBuf);
+impl Drop for BackupStage {
+    fn drop(&mut self) { if self.0.exists() { let _ = fs::remove_dir_all(&self.0); } }
+}
 impl Store {
     pub fn open(path: &Path) -> Result<Self> {
         let mut conn = Connection::open(path)?;
@@ -108,7 +112,8 @@ impl Store {
             &uuid::Uuid::new_v4().to_string()[..8]
         );
         let stage = data.join("backups").join(format!(".{id}.partial"));
-        fs::create_dir_all(&stage)?;
+        fs::create_dir(&stage)?;
+        let _cleanup = BackupStage(stage.clone());
         {
             let c = self.conn.lock().unwrap();
             c.backup(
@@ -159,7 +164,7 @@ impl Store {
         fs::write(
             stage.join("manifest.json"),
             serde_json::to_vec_pretty(
-                &json!({"application":env!("CARGO_PKG_VERSION"),"schema":if *contents == crate::backup::Contents::default() { 1 } else { 2 },"database_schema":SCHEMA_VERSION,"files":files,"contents":contents,"automatic":automatic,"created_at":chrono::Utc::now().to_rfc3339()}),
+                &json!({"application":env!("CARGO_PKG_VERSION"),"schema":if *contents == crate::backup::Contents::default() { 1 } else { 2 },"database_schema":SCHEMA_VERSION,"files":files,"contents":contents,"automatic":automatic,"created_at":chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos,true)}),
             )?,
         )?;
         fs::rename(stage, data.join("backups").join(&id))?;
