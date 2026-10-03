@@ -79,8 +79,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.widget<TextBox>(input).controller!.text, '.r 1d1 未发送草稿');
       await tester.enterText(input, '.r 1d1');
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextBox>(input).controller!.text, '.r 1d1');
       await tester.tap(find.text('发送').hitTestable());
       await until(find.textContaining('1d1 = 1'));
+      expect(find.textContaining('未发送草稿'), findsNothing);
       final worlds = await api.request('/worlds') as List;
       expect(worlds, isNotEmpty);
       expect(worlds.every((world) => jsonDecode(world['key'] as String)[0] == 'simulation'), isTrue);
