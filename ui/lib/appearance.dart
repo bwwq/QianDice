@@ -8,19 +8,19 @@ class WorkspacePalette {
   static WorkspacePalette of(BuildContext context) =>
       WorkspacePalette(FluentTheme.of(context).brightness == Brightness.dark);
 
-  Color get canvas => dark ? const Color(0xff101829) : const Color(0xfff4f6fc);
-  Color get section => dark ? const Color(0xe6202b40) : const Color(0xe6ffffff);
-  Color get control => dark ? const Color(0xff29364d) : const Color(0xffedf1fa);
-  Color get text => dark ? const Color(0xffecf1ff) : const Color(0xff25304b);
-  Color get muted => dark ? const Color(0xffa1aec7) : const Color(0xff66728a);
+  Color get canvas => dark ? const Color(0xff111111) : const Color(0xfff5f5f5);
+  Color get section => dark ? const Color(0xe61f1f1f) : const Color(0xe6ffffff);
+  Color get control => dark ? const Color(0xff2b2b2b) : const Color(0xffededed);
+  Color get text => dark ? const Color(0xfff2f2f2) : const Color(0xff1c1c1c);
+  Color get muted => dark ? const Color(0xffaaaaaa) : const Color(0xff717171);
   Color get selected =>
-      dark ? const Color(0xff344366) : const Color(0xffe8edff);
-  Color get accent => dark ? const Color(0xffa9b7ff) : const Color(0xff5868ce);
-  Color get edge => dark ? const Color(0x18c0d1ff) : const Color(0xafffffff);
+      dark ? const Color(0xff393939) : const Color(0xffe6e6e6);
+  Color get accent => dark ? const Color(0xffe6e6e6) : const Color(0xff292929);
+  Color get edge => dark ? const Color(0x18ffffff) : const Color(0xafffffff);
   Color get success => dark ? const Color(0xff74dbc0) : const Color(0xff289d86);
   List<Color> get backdrop => dark
-      ? const [Color(0xff182944), Color(0xff101829), Color(0xff1e2440)]
-      : const [Color(0xffe5ecfb), Color(0xfff6f8fc), Color(0xffeeebfc)];
+      ? const [Color(0xff171717), Color(0xff111111), Color(0xff191919)]
+      : const [Color(0xffebebeb), Color(0xfff7f7f7), Color(0xfff3f3f3)];
 }
 
 class DiceMark extends StatelessWidget {
@@ -34,12 +34,12 @@ class DiceMark extends StatelessWidget {
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xff8fa9f5), Color(0xff6b70da)],
+        colors: [Color(0xff555555), Color(0xff262626)],
       ),
       borderRadius: BorderRadius.circular(size * .32),
       boxShadow: [
         BoxShadow(
-          color: const Color(0xff7889e5).withValues(alpha: .18),
+          color: const Color(0xff000000).withValues(alpha: .18),
           blurRadius: 20,
           offset: const Offset(0, 6),
         ),
@@ -201,7 +201,7 @@ class DesktopShell extends StatelessWidget {
                       child: Container(
                         decoration: BoxDecoration(
                           color: colors.dark
-                              ? const Color(0x901d2c45)
+                              ? const Color(0x90222222)
                               : const Color(0x90ffffff),
                           border: Border.all(color: colors.edge),
                           borderRadius: BorderRadius.circular(24),
@@ -470,7 +470,7 @@ FluentThemeData workspaceTheme(Brightness brightness) {
           (states) => states.contains(WidgetState.disabled)
               ? colors.muted
               : colors.dark
-              ? const Color(0xff16213a)
+              ? const Color(0xff1b1b1b)
               : Colors.white,
         ),
       ),
