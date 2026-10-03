@@ -433,7 +433,7 @@ FluentThemeData workspaceTheme(Brightness brightness) {
       ),
       subtitle: base.subtitle!.copyWith(fontSize: 16, color: colors.text),
       body: base.body!.copyWith(fontSize: 14, color: colors.text),
-      caption: base.caption!.copyWith(fontSize: 12, color: colors.muted),
+      caption: base.caption!.copyWith(fontSize: 13, color: colors.muted),
     ),
     buttonTheme: ButtonThemeData(
       defaultButtonStyle: ButtonStyle(
@@ -441,7 +441,7 @@ FluentThemeData workspaceTheme(Brightness brightness) {
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
-        foregroundColor: WidgetStatePropertyAll(colors.text),
+        foregroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.disabled) ? colors.muted : colors.text),
         backgroundColor: WidgetStateProperty.resolveWith(
           (states) =>
               states.contains(WidgetState.hovered) ||
@@ -459,12 +459,11 @@ FluentThemeData workspaceTheme(Brightness brightness) {
           (states) => states.contains(WidgetState.disabled)
               ? colors.control
               : states.contains(WidgetState.hovered)
-              ? colors.accent.withValues(alpha: .85)
+              ? Color.lerp(colors.accent, colors.text, .08)
               : colors.accent,
         ),
-        foregroundColor: WidgetStatePropertyAll(
-          colors.dark ? const Color(0xff16213a) : Colors.white,
-        ),
+        foregroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.disabled)
+            ? colors.muted : colors.dark ? const Color(0xff16213a) : Colors.white),
       ),
     ),
     navigationPaneTheme: NavigationPaneThemeData(
