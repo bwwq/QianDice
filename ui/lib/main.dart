@@ -146,6 +146,7 @@ class _WorkspaceState extends State<Workspace> {
   List<dynamic> plugins = [], worlds = [], backups = [];
   StreamSubscription<Map<String, dynamic>>? events;
   Timer? retry;
+  final pageContentKey = GlobalKey();
   final pages = [
     ('概览', glyph('home')), ('账号与群', glyph('group')), ('角色卡', glyph('contact')),
     ('规则', glyph('library')), ('牌堆', glyph('album')), ('跑团记录', glyph('reading_mode')),
@@ -266,7 +267,7 @@ class _WorkspaceState extends State<Workspace> {
       content: Column(children: [
         if (error != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8), child: InfoBar(title: const Text('操作未完成'), content: Text(error!), severity: InfoBarSeverity.error, onClose: () => setState(() => error = null))),
         if (feedback != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8), child: InfoBar(title: Text(feedback!), severity: InfoBarSeverity.success, onClose: () => setState(() => feedback = null))),
-        Expanded(child: IndexedStack(index: page, children: [
+        Expanded(child: IndexedStack(key: pageContentKey, index: page, children: [
           overview(), accounts(), characters(),
           ContentPage(api: widget.api, kind: 'rules', edit: editJson, prompt: prompt),
           ContentPage(api: widget.api, kind: 'decks', edit: editJson, prompt: prompt),

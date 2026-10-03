@@ -149,8 +149,11 @@ main:
         - name: 解析Fluent依赖与静态检查
           script: |
             mkdir -p dist
-            (cd ui && flutter pub get && dart format lib/main.dart && flutter analyze --no-fatal-infos) > dist/fluent-analysis.txt 2>&1
-            fluent_status=$?
+            if (cd ui && flutter pub get && dart format lib/main.dart && flutter analyze --no-fatal-infos) > dist/fluent-analysis.txt 2>&1; then
+              fluent_status=0
+            else
+              fluent_status=$?
+            fi
             printf '%s' "$fluent_status" > dist/fluent-analysis-status.txt
             cat dist/fluent-analysis.txt
         - name: 保存依赖与诊断
