@@ -14,6 +14,7 @@ bash scripts/build-web.sh
 cargo test --locked --all-targets
 cargo build --locked --release
 python3 tests/portable_contract.py target/release/qianbian
+python3 tests/backup_contract.py target/release/qianbian
 node scripts/capture-ui.mjs
 desktop_version="linux-ui-$(git rev-parse --short=12 HEAD)"
 mkdir -p "dist/linux-ui/runtime/$desktop_version"

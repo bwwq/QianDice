@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:http/http.dart' as http;
 import 'appearance.dart';
+import 'backup_settings.dart';
 import 'platform_web.dart'
     if (dart.library.io) 'platform_native.dart'
     as platform;
@@ -1330,6 +1331,8 @@ class _WorkspaceState extends State<Workspace> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 20),
+                BackupSettings(request: widget.api.request, refresh: refresh, notify: message),
                 if (backups.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   for (final backup in backups.reversed.take(10))
@@ -1340,7 +1343,7 @@ class _WorkspaceState extends State<Workspace> {
                 ],
                 const SizedBox(height: 14),
                 Text(
-                  '恢复前停止后台。恢复会回到备份时点，并另存当前数据。',
+                  '恢复前停止后台。自定义备份仅恢复所选内容，并另存当前数据。',
                   style: TextStyle(
                     fontSize: 12,
                     height: 1.5,
@@ -1348,18 +1351,6 @@ class _WorkspaceState extends State<Workspace> {
                   ),
                 ),
               ],
-              action: commandButton(
-                '创建备份',
-                () => action(() async {
-                  final result = await widget.api.request(
-                    '/backups',
-                    method: 'POST',
-                  );
-                  await message('备份完成：${result['id']}');
-                  await refresh();
-                }),
-                icon: 'save',
-              ),
             ),
             group('运行', [
               Text(

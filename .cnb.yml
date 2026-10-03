@@ -1,4 +1,35 @@
 main:
+  api_trigger_backup_prepare:
+    - name: backup-prepare
+      runner:
+        tags: cnb:arch:amd64
+        cpus: 8
+      docker:
+        build: scripts/cloud.Dockerfile
+        volumes:
+          - /root/.cargo/registry:copy-on-write
+          - /root/.pub-cache:copy-on-write
+      stages:
+        - name: 检查备份依赖与接口
+          script: |
+            mkdir -p dist ui/assets/fonts
+            curl -fL 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt' -o ui/assets/fonts/OFL.txt
+            if (rustfmt --edition 2024 --config skip_children=true src/backup.rs src/store.rs src/server.rs src/portable.rs src/main.rs src/lib.rs && cargo check --all-targets && cd ui && flutter pub get --enforce-lockfile && dart format lib/backup_settings.dart lib/main.dart && flutter analyze --no-fatal-infos) > dist/backup-prepare.log 2>&1; then
+              printf '0' > dist/backup-prepare-status.txt
+            else
+              printf '1' > dist/backup-prepare-status.txt
+            fi
+            cat dist/backup-prepare.log
+            tar -czf dist/backup-source.tar.gz Cargo.lock src/backup.rs src/store.rs src/server.rs src/portable.rs src/main.rs src/lib.rs ui/lib/backup_settings.dart ui/lib/main.dart
+        - name: 保存依赖与诊断
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - dist/backup-source.tar.gz
+              - dist/backup-prepare.log
+              - dist/backup-prepare-status.txt
+        - name: 确认备份静态检查通过
+          script: test "$(cat dist/backup-prepare-status.txt)" = 0
   push:
     - name: rust-verify
       runner:
@@ -19,7 +50,9 @@ main:
         - name: Rust构建
           script: cargo build --locked --release
         - name: 便携数据与插件契约
-          script: python3 tests/portable_contract.py target/release/qianbian
+          script: |
+            python3 tests/portable_contract.py target/release/qianbian
+            python3 tests/backup_contract.py target/release/qianbian
         - name: 保存锁文件与后台
           image: cnbcool/attachments:latest
           settings:

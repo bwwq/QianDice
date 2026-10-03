@@ -192,7 +192,7 @@
         }
       },
       "post": {
-        "summary": "暂停写入并创建一致性备份",
+        "summary": "创建所选内容的一致性备份，并上传到已启用的目标；返回本地ID、上传状态和清理警告",
         "responses": {
           "200": {
             "description": "成功",
@@ -229,7 +229,23 @@
               "const": "1"
             }
           }
-        ]
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "contents": {
+                    "$ref": "#/components/schemas/BackupContents"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        }
       }
     },
     "/sessions": {
@@ -1226,6 +1242,37 @@
           }
         ]
       }
+    },
+    "/backups/status": {
+      "get": {
+        "summary": "备份运行状态、下次执行时间、上次结果（不含凭据）",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "参数、业务或插件错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或凭据无效"
+          },
+          "403": {
+            "description": "来源或请求头校验失败"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1301,6 +1348,9 @@
           "cooldown_ms": {
             "type": "integer",
             "minimum": 0
+          },
+          "backup": {
+            "$ref": "#/components/schemas/BackupConfig"
           }
         }
       },
@@ -1440,6 +1490,137 @@
         "properties": {
           "error": {
             "type": "string"
+          }
+        }
+      },
+      "BackupContents": {
+        "type": "object",
+        "description": "角色与团录、配置、插件及数据、规则、牌堆、日志文件；缺省全选",
+        "properties": {
+          "game": {
+            "default": true,
+            "type": "boolean"
+          },
+          "config": {
+            "default": true,
+            "type": "boolean"
+          },
+          "plugins": {
+            "default": true,
+            "type": "boolean"
+          },
+          "rules": {
+            "default": true,
+            "type": "boolean"
+          },
+          "decks": {
+            "default": true,
+            "type": "boolean"
+          },
+          "logs": {
+            "default": true,
+            "type": "boolean"
+          }
+        }
+      },
+      "BackupConfig": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "default": false,
+            "type": "boolean"
+          },
+          "interval_minutes": {
+            "maximum": 525600,
+            "minimum": 1,
+            "default": 1440,
+            "type": "integer"
+          },
+          "keep": {
+            "maximum": 1000,
+            "minimum": 1,
+            "description": "仅清理自动备份；远端仅清理本实例记录的自动备份",
+            "default": 7,
+            "type": "integer"
+          },
+          "contents": {
+            "$ref": "#/components/schemas/BackupContents"
+          },
+          "webdav": {
+            "properties": {
+              "password": {
+                "writeOnly": true,
+                "description": "留空保留已保存密码",
+                "type": "string"
+              },
+              "has_password": {
+                "type": "boolean",
+                "readOnly": true
+              },
+              "username": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "clear_credentials": {
+                "type": "boolean",
+                "writeOnly": true
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "s3": {
+            "properties": {
+              "secret_key": {
+                "type": "string",
+                "writeOnly": true
+              },
+              "has_session_token": {
+                "type": "boolean",
+                "readOnly": true
+              },
+              "path_style": {
+                "default": true,
+                "type": "boolean"
+              },
+              "has_secret_key": {
+                "type": "boolean",
+                "readOnly": true
+              },
+              "bucket": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "session_token": {
+                "type": "string",
+                "writeOnly": true
+              },
+              "region": {
+                "default": "us-east-1",
+                "type": "string"
+              },
+              "clear_credentials": {
+                "type": "boolean",
+                "writeOnly": true
+              },
+              "prefix": {
+                "default": "qianbian",
+                "type": "string"
+              },
+              "endpoint": {
+                "type": "string"
+              },
+              "access_key": {
+                "type": "string"
+              }
+            },
+            "type": "object"
           }
         }
       }

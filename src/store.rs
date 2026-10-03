@@ -98,6 +98,10 @@ impl Store {
     }
     // Caller holds the global maintenance write gate throughout this operation.
     pub fn backup(&self, data: &Path) -> Result<String> {
+        self.backup_selected(data, &crate::backup::Contents::default(), false)
+    }
+    pub fn backup_selected(&self, data: &Path, contents: &crate::backup::Contents, automatic: bool) -> Result<String> {
+        contents.validate()?;
         let id = format!(
             "{}-{}",
             chrono::Utc::now().format("%Y%m%d-%H%M%S"),
@@ -113,7 +117,17 @@ impl Store {
                 None,
             )?;
         }
-        for dir in ["config", "plugins", "rules", "decks", "logs"] {
+        {
+            let mut snapshot = Connection::open(stage.join("qianbian.sqlite"))?;
+            let tx = snapshot.transaction()?;
+            if !contents.game {
+                tx.execute("DELETE FROM kv WHERE namespace='world'", [])?;
+                tx.execute("DELETE FROM logs", [])?;
+            }
+            if !contents.plugins { tx.execute("DELETE FROM kv WHERE namespace<>'world'", [])?; }
+            tx.commit()?;
+        }
+        for dir in contents.directories() {
             let source = data.join(dir);
             for entry in walkdir::WalkDir::new(&source).follow_links(false) {
                 let e = entry?;
@@ -145,7 +159,7 @@ impl Store {
         fs::write(
             stage.join("manifest.json"),
             serde_json::to_vec_pretty(
-                &json!({"application":env!("CARGO_PKG_VERSION"),"schema":SCHEMA_VERSION,"files":files}),
+                &json!({"application":env!("CARGO_PKG_VERSION"),"schema":if *contents == crate::backup::Contents::default() { 1 } else { 2 },"database_schema":SCHEMA_VERSION,"files":files,"contents":contents,"automatic":automatic,"created_at":chrono::Utc::now().to_rfc3339()}),
             )?,
         )?;
         fs::rename(stage, data.join("backups").join(&id))?;
@@ -154,9 +168,13 @@ impl Store {
 }
 pub fn validate_backup(path: &Path) -> Result<Value> {
     let m: Value = serde_json::from_slice(&fs::read(path.join("manifest.json"))?)?;
-    if m["schema"].as_i64() != Some(SCHEMA_VERSION) {
+    if !matches!(m["schema"].as_i64(), Some(1 | 2)) || m["database_schema"].as_i64().unwrap_or(1) != SCHEMA_VERSION {
         bail!("备份数据版本不兼容")
     }
+    let contents: crate::backup::Contents = if m["schema"] == 2 {
+        serde_json::from_value(m["contents"].clone()).context("自定义备份缺少内容清单")?
+    } else { crate::backup::Contents::default() };
+    contents.validate()?;
     let files = m["files"].as_object().context("备份缺少校验清单")?;
     if !files.contains_key("qianbian.sqlite") {
         bail!("备份缺少数据库")
@@ -188,6 +206,9 @@ pub fn validate_backup(path: &Path) -> Result<Value> {
         {
             bail!("备份包含不支持的根目录：{top}")
         }
+        if top != "qianbian.sqlite" && !contents.directories().contains(&top.as_ref()) {
+            bail!("备份文件与内容清单不一致：{top}")
+        }
         let p = path.join(rel);
         let base = std::fs::canonicalize(path)?;
         if !std::fs::canonicalize(&p)?.starts_with(&base)
@@ -200,6 +221,50 @@ pub fn validate_backup(path: &Path) -> Result<Value> {
         }
     }
     Ok(m)
+}
+/// Build a complete staged database, replacing only namespaces selected by the snapshot.
+/// This runs offline, after the instance lock and a full recovery-point backup.
+pub fn prepare_restore(data: &Path, source: &Path, manifest: &Value) -> Result<()> {
+    let stage = data.join("restore-staging");
+    if stage.exists() { bail!("发现上次未完成的恢复目录，请先核对目录") }
+    fs::create_dir(&stage)?;
+    let result = (|| -> Result<()> {
+        let contents: crate::backup::Contents = if manifest["schema"] == 2 {
+            serde_json::from_value(manifest["contents"].clone())?
+        } else { Default::default() };
+        for (name, _) in manifest["files"].as_object().context("备份清单无效")? {
+            if name == "qianbian.sqlite" { continue; }
+            let target = stage.join(name);
+            fs::create_dir_all(target.parent().unwrap())?;
+            fs::copy(source.join(name), target)?;
+        }
+        for name in contents.directories() { fs::create_dir_all(stage.join(name))?; }
+        if contents.game && contents.plugins {
+            fs::copy(source.join("qianbian.sqlite"), stage.join("qianbian.sqlite"))?;
+        } else {
+            let current = Connection::open(data.join("qianbian.sqlite"))?;
+            current.backup(rusqlite::DatabaseName::Main, stage.join("qianbian.sqlite"), None)?;
+            drop(current);
+            let mut next = Connection::open(stage.join("qianbian.sqlite"))?;
+            next.execute("ATTACH DATABASE ?1 AS incoming", [source.join("qianbian.sqlite").to_string_lossy().as_ref()])?;
+            let tx = next.transaction()?;
+            if contents.game {
+                tx.execute("DELETE FROM kv WHERE namespace='world'", [])?;
+                tx.execute("INSERT INTO kv SELECT * FROM incoming.kv WHERE namespace='world'", [])?;
+                tx.execute("DELETE FROM logs", [])?;
+                tx.execute("INSERT INTO logs SELECT * FROM incoming.logs", [])?;
+            }
+            if contents.plugins {
+                tx.execute("DELETE FROM kv WHERE namespace<>'world'", [])?;
+                tx.execute("INSERT INTO kv SELECT * FROM incoming.kv WHERE namespace<>'world'", [])?;
+            }
+            tx.commit()?;
+            next.execute("DETACH DATABASE incoming", [])?;
+        }
+        Ok(())
+    })();
+    if result.is_err() { let _ = fs::remove_dir_all(&stage); }
+    result
 }
 pub fn recover_restore(data: &Path) -> Result<()> {
     let journal = data.join("restore-journal.json");

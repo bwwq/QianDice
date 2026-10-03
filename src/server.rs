@@ -43,7 +43,8 @@ pub struct App {
     pub config: RwLock<Config>,
     pub hub: Arc<Hub>,
     pub shutdown: watch::Sender<bool>,
-    pub maintenance: RwLock<()>,
+    pub maintenance: Arc<RwLock<()>>,
+    pub backups: crate::backup::Backups,
     pub dispatch: Mutex<()>,
     events: broadcast::Sender<Notice>,
     recent: std::sync::Mutex<std::collections::VecDeque<Notice>>,
@@ -81,6 +82,7 @@ impl App {
         ensure!(token.len() >= 32, "管理令牌至少需要32个字符");
         let (events, _) = broadcast::channel(256);
         let (shutdown, _) = watch::channel(false);
+        let backups = crate::backup::Backups::new(&paths.data)?;
         Ok(Arc::new(Self {
             paths,
             store,
@@ -88,7 +90,8 @@ impl App {
             config: RwLock::new(config),
             hub: Arc::new(Hub::default()),
             shutdown,
-            maintenance: RwLock::new(()),
+            maintenance: Arc::new(RwLock::new(())),
+            backups,
             dispatch: Mutex::new(()),
             events,
             recent: std::sync::Mutex::new(std::collections::VecDeque::new()),
@@ -441,6 +444,7 @@ pub fn router(app: Arc<App>) -> Router {
             get(content_get).put(content_put).delete(content_delete),
         )
         .route("/backups", get(backups).post(backup))
+        .route("/backups/status", get(backup_status))
         .route("/logs", get(logs))
         .route("/sessions", get(sessions))
         .route("/export", get(export))
@@ -573,7 +577,10 @@ async fn config_get(State(app): State<Arc<App>>) -> Json<Value> {
     for a in &mut config.accounts {
         a.token = String::new();
     }
-    Json(serde_json::to_value(config).unwrap())
+    let public_backup = config.backup.public();
+    let mut value = serde_json::to_value(config).unwrap();
+    value["backup"] = public_backup;
+    Json(value)
 }
 async fn config_set(State(app): State<Arc<App>>, Json(input): Json<Value>) -> ApiResult<Value> {
     let _gate = app.maintenance.write().await;
@@ -586,6 +593,7 @@ async fn config_set(State(app): State<Arc<App>>, Json(input): Json<Value>) -> Ap
         merged[key] = value.clone();
     }
     let mut cfg: Config = serde_json::from_value(merged)?;
+    cfg.backup.preserve_credentials(&old.backup);
     for a in &mut cfg.accounts {
         if a.token.is_empty() {
             if let Some(o) = old.accounts.iter().find(|o| o.id == a.id) {
@@ -598,12 +606,16 @@ async fn config_set(State(app): State<Arc<App>>, Json(input): Json<Value>) -> Ap
         &app.paths.data.join("config/server.json"),
         &serde_json::to_vec_pretty(&cfg)?,
     )?;
-    *app.config.write().await = cfg;
+    *app.config.write().await = cfg.clone();
+    if let Err(e) = app.backups.changed(&app.paths.data, &cfg.backup).await {
+        app.emit("error", format!("备份设置已生效，但调度状态无法保存：{e}"));
+    }
     Ok(Json(
         json!({"ok":true,"message":"配置已保存。账号连接和监听地址在重启后台后应用；权限和前缀立即生效。"}),
     ))
 }
 pub fn ensure_config(c: &Config) -> Result<()> {
+    c.backup.validate()?;
     ensure!(
         !c.prefixes.is_empty() && c.prefixes.iter().all(|p| !p.is_empty() && p.len() < 16),
         "前缀配置无效"
@@ -831,16 +843,20 @@ async fn content_delete(
 async fn backups(State(app): State<Arc<App>>) -> ApiResult<Value> {
     let list = std::fs::read_dir(app.paths.data.join("backups"))?
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().join("manifest.json").exists())
+        .filter(|e| !e.file_name().to_string_lossy().starts_with('.') && e.file_type().is_ok_and(|t| t.is_dir() && !t.is_symlink()) && e.path().join("manifest.json").exists())
         .map(|e| e.file_name().to_string_lossy().to_string())
         .collect::<Vec<_>>();
     Ok(Json(json!(list)))
 }
-async fn backup(State(app): State<Arc<App>>) -> ApiResult<Value> {
-    let _gate = tokio::time::timeout(Duration::from_secs(35), app.maintenance.write()).await?;
-    let id = app.store.backup(&app.paths.data)?;
-    app.emit("backup", format!("备份完成：{id}"));
-    Ok(Json(json!({"id":id})))
+async fn backup_status(State(app): State<Arc<App>>) -> Json<Value> {
+    Json(app.backups.status().await)
+}
+async fn backup(State(app): State<Arc<App>>, body: axum::body::Bytes) -> ApiResult<Value> {
+    #[derive(Deserialize, Default)]
+    #[serde(deny_unknown_fields)]
+    struct Request { contents: Option<crate::backup::Contents> }
+    let input: Request = if body.is_empty() { Request::default() } else { serde_json::from_slice(&body)? };
+    Ok(Json(app.backups.create(&app, false, input.contents).await?))
 }
 #[derive(Deserialize)]
 struct LogQuery {

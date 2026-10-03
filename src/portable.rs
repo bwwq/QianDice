@@ -130,6 +130,7 @@ pub struct Config {
     pub blocked_users: Vec<String>,
     pub allowed_groups: Vec<String>,
     pub cooldown_ms: u64,
+    pub backup: crate::backup::BackupConfig,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -141,6 +142,7 @@ impl Default for Config {
             blocked_users: vec![],
             allowed_groups: vec![],
             cooldown_ms: 500,
+            backup: Default::default(),
         }
     }
 }

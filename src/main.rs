@@ -78,20 +78,7 @@ async fn main() -> Result<()> {
         let store = Store::open(&paths.data.join("qianbian.sqlite"))?;
         let before = store.backup(&paths.data)?;
         drop(store);
-        let stage = paths.data.join("restore-staging");
-        ensure!(
-            !stage.exists(),
-            "发现上次未完成的恢复目录，请先核对并恢复备份"
-        );
-        std::fs::create_dir_all(&stage)?;
-        for (name, _) in manifest["files"].as_object().context("备份清单无效")? {
-            let target = stage.join(name);
-            std::fs::create_dir_all(target.parent().unwrap())?;
-            std::fs::copy(path.join(name), target)?;
-        }
-        for name in ["config", "plugins", "rules", "decks", "logs"] {
-            std::fs::create_dir_all(stage.join(name))?;
-        }
+        qianbian::store::prepare_restore(&paths.data, path, &manifest)?;
         qianbian::portable::atomic_write(
             &paths.data.join("restore-journal.json"),
             &serde_json::to_vec(
@@ -121,6 +108,7 @@ async fn main() -> Result<()> {
     plugins.start_defaults().await?;
     let app = App::new(paths.clone(), store, plugins.clone(), config.clone())?;
     tokio::spawn(app.clone().run_timers());
+    let backup_task = tokio::spawn(qianbian::backup::Backups::run(app.clone()));
     for account in config.accounts {
         if account.enabled && account.mode == "forward" {
             tokio::spawn(onebot::forward(app.clone(), account));
@@ -146,6 +134,7 @@ async fn main() -> Result<()> {
         })
         .await?;
     plugins.shutdown().await;
+    let _ = backup_task.await;
     Ok(())
 }
 async fn terminate_signal() {
