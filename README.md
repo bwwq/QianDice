@@ -2,6 +2,8 @@
 
 Rust 后台、React Web 管理端、Flutter 桌面界面，面向 CoC / DND 的便携跑团骰系。通过 OneBot 11 对接独立 QQ 协议端；数据保存在程序旁，Python 和 Rust 扩展以独立进程接入。
 
+[功能、使用方法与实现图表](docs/features.html)可离线打开、搜索与导出，并包含 Linux OneBot 测试的实际收发报文。
+
 ## 启动
 
 Web 版运行 `qianbian.exe`（Windows）或 `./qianbian`（Linux）。默认地址为 `http://127.0.0.1:9610`，管理令牌保存在 `data/config/admin-token.txt`。桌面版运行 UI 入口，关闭窗口不会停止后台。

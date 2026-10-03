@@ -17,6 +17,10 @@ Web 已按用户要求改为 React，桌面保留 Flutter，两者共用 Rust �
 
 ## 验证证据
 
+- [OneBot 11 Linux 并发功能验收](https://cnb.cool/wsqlxl/qianbian/-/build/logs/cnb-j8q-1k3vh18c5)：提交 `3be2793b057a4d660598429b00dfbcb965c95364`。四组独立后台通过真实 WebSocket 接受官方格式事件、返回消息 API 请求并接收 echo 回执；全部通过，纯执行 1.558 秒，编译 105.306 秒。Rust SDK 和便携备份恢复契约也通过。原始报文及摘要位于 `dist/functional-report/`，功能图表见 [features.html](features.html)。
+- 本轮修正出站 OneBot 用户/群 ID 为规范要求的 JSON 数字；新增管理员 `.drawreset 名称`，牌堆内容变更后自动清除当前群的旧抽取进度。覆盖无放回抽尽、重置、跨群隔离、内容热更新及权限限制。
+- 并发验收覆盖角色绑定、SC/成长写回、CoC/DND、牌堆、团录分页与三种导出、多账号、暗骰失败、黑白名单/冷却、握手拒绝、错误 echo、断线重连及失败插件更新。测试报文是隔离账号与群，不连接真实 QQ。
+
 - [CNB 最终 Linux 桌面验收](https://cnb.cool/wsqlxl/qianbian/-/build/logs/cnb-bfu-1k3vf5dna)：Ubuntu 24.04 构建、Rust 规则测试、便携与插件契约、React 浏览器检查、Xvfb 中的桌面启动及退出全部成功。
 - [CNB Web 验证](https://cnb.cool/wsqlxl/qianbian/-/build/logs/cnb-19j-1k3veq4m4)：实际登录、模拟掷骰、宽窄屏截图通过；浏览器异常及控制台错误均为零。
 - Windows 在已配置的远程 Windows 10 22H2（10.0.19045）原生编译。日志位于本地 `.scratch/remote-windows-package.log` 和 `.scratch/remote-windows-package-final.log`；出现便携契约 PASS、桌面生命周期 PASS 和 `QIANBIAN_WINDOWS_VALIDATED`。
