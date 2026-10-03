@@ -21,6 +21,12 @@ try {
   if (!token) throw new Error('Visual verification backend did not start');
   browser = await chromium.launch({headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
   const context = await browser.newContext({viewport: {width: 1440, height: 960}, colorScheme: 'light', locale: 'zh-CN'});
+  await mkdir('dist', {recursive: true});
+  const loginPage = await context.newPage();
+  await loginPage.goto('http://127.0.0.1:19610/', {waitUntil: 'domcontentloaded'});
+  await loginPage.getByRole('heading', {name: '登录', exact: true}).waitFor();
+  await loginPage.screenshot({path: 'dist/ui-login.png'});
+  await loginPage.close();
   await context.request.post('http://127.0.0.1:19610/api/v1/login', {data: {token}});
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
@@ -41,6 +47,11 @@ try {
   await page.setViewportSize({width: 700, height: 900});
   await page.waitForTimeout(500);
   await page.screenshot({path: 'dist/ui-compact.png'});
+  await page.setViewportSize({width: 390, height: 844});
+  await page.screenshot({path: 'dist/ui-mobile.png'});
+  await page.setViewportSize({width: 1440, height: 960});
+  await page.getByRole('button', {name: '切换深浅主题', exact: true}).click();
+  await page.screenshot({path: 'dist/ui-dark.png'});
   await writeFile('dist/ui-dom.html', await page.content());
   const processes = [];
   for (const pid of await readdir('/proc')) {
