@@ -156,22 +156,22 @@ main:
             else
               fluent_status=$?
             fi
-              printf '%s' "$fluent_status" > dist/fluent-analysis-status.txt
-              cat dist/fluent-analysis.txt
-              cp ui/lib/main.dart dist/fluent-main.dart
-              cp ui/lib/appearance.dart dist/fluent-appearance.dart
-              cp ui/integration_test/desktop_contract.dart dist/fluent-contract.dart
+            printf '%s' "$fluent_status" > dist/fluent-analysis-status.txt
+            cat dist/fluent-analysis.txt
+            cp ui/lib/main.dart dist/fluent-main.dart
+            cp ui/lib/appearance.dart dist/fluent-appearance.dart
+            cp ui/integration_test/desktop_contract.dart dist/fluent-contract.dart
         - name: 保存依赖与诊断
           image: cnbcool/attachments:latest
           settings:
             attachments:
               - ui/pubspec.lock
-                - ui/lib/main.dart
-                - ui/lib/appearance.dart
-                - ui/integration_test/desktop_contract.dart
-                - dist/fluent-main.dart
-                - dist/fluent-appearance.dart
-                - dist/fluent-contract.dart
+              - ui/lib/main.dart
+              - ui/lib/appearance.dart
+              - ui/integration_test/desktop_contract.dart
+              - dist/fluent-main.dart
+              - dist/fluent-appearance.dart
+              - dist/fluent-contract.dart
               - dist/fluent-analysis.txt
               - dist/fluent-analysis-status.txt
         - name: 确认静态检查通过
@@ -204,11 +204,11 @@ main:
               - dist/linux-desktop-memory.json
               - dist/fluent-linux-desktop.png
               - dist/fluent-overview.png
-                - dist/fluent-dark-chat.png
-                - dist/fluent-light-chat.png
-                - dist/fluent-dark-overview.png
-                - dist/fluent-settings.png
-                - dist/fluent-compact.png
+              - dist/fluent-dark-chat.png
+              - dist/fluent-light-chat.png
+              - dist/fluent-dark-overview.png
+              - dist/fluent-settings.png
+              - dist/fluent-compact.png
               - dist/ui-desktop.png
               - dist/ui-mobile.png
               - dist/ui-dark.png
