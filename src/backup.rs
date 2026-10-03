@@ -207,7 +207,8 @@ impl Backups {
     pub async fn create(&self, app: &Arc<App>, automatic: bool, contents: Option<Contents>) -> Result<Value> {
         let _operation = self.operation.try_lock().context("备份正在进行，请稍后重试")?;
         let cfg = app.config.read().await.backup.clone();
-        let selected = contents.unwrap_or_else(|| cfg.contents.clone());
+        // Legacy clients POST an empty body and label it as a full backup.
+        let selected = contents.unwrap_or_else(|| if automatic { cfg.contents.clone() } else { Contents::default() });
         selected.validate()?;
         {
             let mut state = self.state.lock().await;

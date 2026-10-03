@@ -227,7 +227,7 @@ main:
         - name: 构建并验收Linux桌面
           script: |
             mkdir -p dist
-            if (set -e; apt-get update -qq; apt-get install -y --no-install-recommends xvfb xauth scrot; QIANBIAN_LINUX_ONLY=1 bash scripts/build-cloud.sh; xvfb-run -a -s '-screen 0 1366x900x24' python3 scripts/check-linux-ui.py dist/linux-ui; QIANBIAN_TEST_BINARY="$(pwd)/target/release/qianbian" QIANBIAN_UI_REPORT_DIR="$(pwd)/dist" xvfb-run -a -s '-screen 0 1366x900x24' bash -c 'cd ui && flutter test integration_test/desktop_contract.dart -d linux') > dist/linux-acceptance.log 2>&1; then
+            if (apt-get update -qq && apt-get install -y --no-install-recommends xvfb xauth scrot && QIANBIAN_LINUX_ONLY=1 bash scripts/build-cloud.sh && xvfb-run -a -s '-screen 0 1366x900x24' python3 scripts/check-linux-ui.py dist/linux-ui && QIANBIAN_TEST_BINARY="$(pwd)/target/release/qianbian" QIANBIAN_UI_REPORT_DIR="$(pwd)/dist" xvfb-run -a -s '-screen 0 1366x900x24' bash -c 'cd ui && flutter test integration_test/desktop_contract.dart -d linux') > dist/linux-acceptance.log 2>&1; then
               printf '0' > dist/linux-acceptance-status.txt
             else
               printf '1' > dist/linux-acceptance-status.txt

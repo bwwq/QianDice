@@ -1,5 +1,6 @@
 """Reusable contract: scheduling, selective restore, retention and authenticated remote uploads."""
 import base64
+from contextlib import closing
 import hashlib
 import hmac
 import io
@@ -169,8 +170,11 @@ try:
     command('.log on 备份契约'); command('.r 1d1'); command('.log end')
     plugin_file = root / 'data/plugins/user-note.txt'
     plugin_file.write_text('preserve this plugin file')
-    with sqlite3.connect(root / 'data/qianbian.sqlite') as db:
+    with closing(sqlite3.connect(root / 'data/qianbian.sqlite')) as db:
         db.execute("INSERT INTO kv VALUES('plugin:fixture','counter','1',1)")
+        # Simulation is intentionally excluded from production logs.
+        db.execute("INSERT INTO logs(scope,session,time,actor,text) VALUES('fixture','备份契约','2026-01-01T00:00:00Z','owner','正式团录记录')")
+        db.commit()
     config = api('/config')['backup']
     config['contents'] = selected()
     config['webdav'].update(enabled=True, url=remote_url + '/dav/千变 备份/', username='backup-user', password='contract-password')
@@ -180,35 +184,40 @@ try:
     assert public['webdav']['password'] == '' and public['webdav']['has_password']
     assert public['s3']['secret_key'] == '' and public['s3']['session_token'] == ''
     api('/config', {'backup': public}, 'PUT')  # blank secrets preserve saved credentials
-    result = api('/backups', {})
+    result = api('/backups', {'contents': selected()})
     assert result['status'] == 'success' and len(result['uploads']) == 2, result
     backup = result['id']
     snapshot = root / 'data/backups' / backup
     manifest = json.loads((snapshot / 'manifest.json').read_text())
     assert manifest['schema'] == 2 and manifest['contents'] == selected()
     assert not (snapshot / 'plugins').exists() and not (snapshot / 'config').exists()
-    with sqlite3.connect(snapshot / 'qianbian.sqlite') as db:
+    with closing(sqlite3.connect(snapshot / 'qianbian.sqlite')) as db:
         assert db.execute("SELECT count(*) FROM kv WHERE namespace<>'world'").fetchone()[0] == 0
         assert db.execute('SELECT count(*) FROM logs').fetchone()[0] > 0
     for archive_bytes in files.values():
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
             assert not any(name.startswith(('plugins/', 'config/')) for name in archive.namelist())
     assert all('%E5' in name and '%20' in name for name in files), list(files)
+    legacy = api('/backups', {})['id']
+    legacy_snapshot = root / 'data/backups' / legacy
+    assert json.loads((legacy_snapshot / 'manifest.json').read_text())['schema'] == 1
+    assert (legacy_snapshot / 'plugins/user-note.txt').exists(), 'legacy full backup became selective'
     plugin_contents = {key: key == 'plugins' for key in selected()}
     plugin_backup = api('/backups', {'contents': plugin_contents})['id']
-    with sqlite3.connect(root / 'data/backups' / plugin_backup / 'qianbian.sqlite') as db:
+    with closing(sqlite3.connect(root / 'data/backups' / plugin_backup / 'qianbian.sqlite')) as db:
         assert db.execute("SELECT count(*) FROM kv WHERE namespace='world'").fetchone()[0] == 0
         assert db.execute('SELECT count(*) FROM logs').fetchone()[0] == 0
     command('.st 力量77')
-    with sqlite3.connect(root / 'data/qianbian.sqlite') as db:
+    with closing(sqlite3.connect(root / 'data/qianbian.sqlite')) as db:
         db.execute("UPDATE kv SET value='2', revision=2 WHERE namespace='plugin:fixture'")
+        db.commit()
     stop()
     restored = subprocess.run([str(binary), '--root', str(root), 'restore', str(snapshot), '--confirm'], capture_output=True)
     assert restored.returncode == 0, restored.stderr
     start()
     assert command('.st 力量')['public'].endswith('55')
     assert plugin_file.read_text() == 'preserve this plugin file'
-    with sqlite3.connect(root / 'data/qianbian.sqlite') as db:
+    with closing(sqlite3.connect(root / 'data/qianbian.sqlite')) as db:
         assert db.execute("SELECT value FROM kv WHERE namespace='plugin:fixture'").fetchone()[0] == '2'
     command('.st 力量88')
     plugin_file.write_text('newer plugin file')
@@ -218,7 +227,7 @@ try:
     start()
     assert command('.st 力量')['public'].endswith('88')
     assert plugin_file.read_text() == 'preserve this plugin file'
-    with sqlite3.connect(root / 'data/qianbian.sqlite') as db:
+    with closing(sqlite3.connect(root / 'data/qianbian.sqlite')) as db:
         assert db.execute("SELECT value FROM kv WHERE namespace='plugin:fixture'").fetchone()[0] == '1'
     for patch in [{'interval_minutes': 0}, {'keep': 0}, {'contents': {key: False for key in selected()}}]:
         bad = api('/config')['backup']; bad.update(patch)
