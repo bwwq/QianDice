@@ -56,6 +56,7 @@ try:
     assert ui.poll() is None, 'Flutter desktop did not remain running'
     running = processes()
     assert any(p['role'] == 'desktop' for p in running)
+    subprocess.run(['scrot', '-o', 'dist/fluent-linux-desktop.png'], check=True)
     Path('dist/linux-desktop-memory.json').write_text(json.dumps({'scenario': 'Ubuntu24.04 Xvfb desktop, five plugins, no QQ account', 'measurement': 'VmRSS KiB; shared pages counted per process', 'processes': running}, indent=2))
     ui.terminate()
     ui.wait(timeout=10)

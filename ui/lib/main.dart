@@ -258,7 +258,7 @@ class _WorkspaceState extends State<Workspace> {
       Tooltip(message: expanded ? '收起侧栏' : '展开侧栏', child: IconButton(icon: Icon(glyph('global_nav_button'), size: 16), onPressed: () => setState(() => expanded = !expanded))),
     ]))),
     pane: NavigationPane(selected: page, onChanged: (index) => setState(() => page = index),
-      displayMode: MediaQuery.sizeOf(context).width < 760 ? PaneDisplayMode.minimal : expanded ? PaneDisplayMode.open : PaneDisplayMode.compact,
+      displayMode: MediaQuery.sizeOf(context).width < 760 ? PaneDisplayMode.minimal : expanded ? PaneDisplayMode.expanded : PaneDisplayMode.compact,
       header: Padding(padding: const EdgeInsets.fromLTRB(18, 18, 18, 12), child: Text('工作台', style: FluentTheme.of(context).typography.caption)),
       items: [for (final entry in pages) PaneItem(icon: Icon(entry.$2, size: 18), title: Text(entry.$1), body: const SizedBox.shrink())],
     ),

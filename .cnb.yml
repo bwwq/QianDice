@@ -149,7 +149,9 @@ main:
         - name: 解析Fluent依赖与静态检查
           script: |
             mkdir -p dist
-            if (cd ui && flutter pub get && dart format lib/main.dart && flutter analyze --no-fatal-infos) > dist/fluent-analysis.txt 2>&1; then
+            mkdir -p ui/assets/fonts
+            curl -fL 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt' -o ui/assets/fonts/OFL.txt
+            if (cd ui && flutter pub get --enforce-lockfile && dart format lib integration_test && flutter analyze --no-fatal-infos) > dist/fluent-analysis.txt 2>&1; then
               fluent_status=0
             else
               fluent_status=$?
@@ -181,9 +183,10 @@ main:
         - name: 构建并验收Linux桌面
           script: |
             apt-get update -qq
-            apt-get install -y --no-install-recommends xvfb xauth
+            apt-get install -y --no-install-recommends xvfb xauth scrot
             QIANBIAN_LINUX_ONLY=1 bash scripts/build-cloud.sh
-            xvfb-run -a python3 scripts/check-linux-ui.py dist/linux-ui
+            xvfb-run -a -s '-screen 0 1366x900x24' python3 scripts/check-linux-ui.py dist/linux-ui
+            QIANBIAN_TEST_BINARY="$(pwd)/target/release/qianbian" QIANBIAN_UI_REPORT_DIR="$(pwd)/dist" xvfb-run -a -s '-screen 0 1366x900x24' bash -c 'cd ui && flutter test integration_test/desktop_contract.dart -d linux'
         - name: 保存Linux桌面与内存记录
           image: cnbcool/attachments:latest
           settings:
@@ -191,6 +194,9 @@ main:
               - dist/qianbian-linux-x86_64
               - dist/qianbian-linux-ui-x86_64.tar.gz
               - dist/linux-desktop-memory.json
+              - dist/fluent-linux-desktop.png
+              - dist/fluent-overview.png
+              - dist/fluent-dark-chat.png
               - dist/ui-desktop.png
               - dist/ui-mobile.png
               - dist/ui-dark.png
