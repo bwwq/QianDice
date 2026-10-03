@@ -1209,69 +1209,209 @@ class _WorkspaceState extends State<Workspace> {
   Widget settings() {
     final colors = WorkspacePalette.of(context);
     final directory = '${status['data_directory'] ?? ''}';
-    Widget group(String title, List<Widget> children, {Widget? action}) => Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Surface(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [Expanded(child: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: colors.text))),
-          if (action != null) action]),
-        const SizedBox(height: 14), ...children,
-      ])),
-    );
-    final themePicker = SizedBox(width: 200, child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: colors.control, borderRadius: BorderRadius.circular(10)),
-      child: ComboBox<ThemeMode>(isExpanded: true, value: widget.themeMode,
-        onChanged: (mode) { if (mode != null) widget.onTheme(mode); },
-        items: const [ComboBoxItem(value: ThemeMode.system, child: Text('跟随系统')),
-          ComboBoxItem(value: ThemeMode.light, child: Text('浅色')),
-          ComboBoxItem(value: ThemeMode.dark, child: Text('深色'))],
+    Widget group(String title, List<Widget> children, {Widget? action}) =>
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Surface(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: colors.text,
+                        ),
+                      ),
+                    ),
+                    if (action != null) action,
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ...children,
+              ],
+            ),
+          ),
+        );
+    final themePicker = SizedBox(
+      width: 200,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: colors.control,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: ComboBox<ThemeMode>(
+          isExpanded: true,
+          value: widget.themeMode,
+          onChanged: (mode) {
+            if (mode != null) widget.onTheme(mode);
+          },
+          items: const [
+            ComboBoxItem(value: ThemeMode.system, child: Text('跟随系统')),
+            ComboBoxItem(value: ThemeMode.light, child: Text('浅色')),
+            ComboBoxItem(value: ThemeMode.dark, child: Text('深色')),
+          ],
+        ),
       ),
-    ));
-    return Align(alignment: Alignment.topLeft, child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 860),
-      child: ListView(padding: const EdgeInsets.fromLTRB(24, 8, 24, 24), children: [
-        group('外观', [LayoutBuilder(builder: (context, constraints) => constraints.maxWidth < 400
-          ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('主题'), const SizedBox(height: 10), themePicker])
-          : Row(children: [const Expanded(child: Text('主题')), themePicker]))]),
-        group('数据与备份', [
-          Text('数据目录', style: TextStyle(fontSize: 12, color: colors.muted)),
-          const SizedBox(height: 8),
-          Container(padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-            decoration: BoxDecoration(color: colors.control.withValues(alpha: .65), borderRadius: BorderRadius.circular(10)),
-            child: Row(children: [Expanded(child: SelectableText(directory, style: TextStyle(fontSize: 13, height: 1.5, color: colors.text))),
-              const SizedBox(width: 8),
-              Tooltip(message: '复制路径', child: IconButton(icon: const Icon(FluentIcons.copy, size: 15),
-                onPressed: directory.isEmpty ? null : () => action(() async {
-                  await Clipboard.setData(ClipboardData(text: directory)); await message('路径已复制');
-                }))),
-            ])),
-          if (backups.isNotEmpty) ...[const SizedBox(height: 12),
-            for (final backup in backups.reversed.take(10)) ListTile(leading: Icon(glyph('archive'), size: 16), title: Text('$backup'))],
-          const SizedBox(height: 14),
-          Text('恢复前停止后台。恢复会回到备份时点，并另存当前数据。', style: TextStyle(fontSize: 12, height: 1.5, color: colors.muted)),
-        ], action: commandButton('创建备份', () => action(() async {
-          final result = await widget.api.request('/backups', method: 'POST');
-          await message('备份完成：${result['id']}'); await refresh();
-        }), icon: 'save')),
-        group('运行', [
-          Text('千变 ${status['version'] ?? ''} · ${status['platform'] ?? ''}', style: TextStyle(fontSize: 13, color: colors.muted)),
-          const SizedBox(height: 14),
-          Wrap(spacing: 10, runSpacing: 10, children: [
-            commandButton('退出登录', () async {
-              await widget.api.request('/logout', method: 'POST'); widget.api.token = ''; widget.onLogout();
-            }, icon: 'sign_out'),
-            Button(onPressed: () async {
-              if (await confirm('停止千变后台？', '机器人连接与插件都会停止。关闭管理窗口不会停止后台。')) {
-                await action(() async { await widget.api.request('/shutdown', method: 'POST'); await message('后台正在停止'); });
-              }
-            }, style: ButtonStyle(foregroundColor: WidgetStatePropertyAll(colors.dark ? const Color(0xffffa7af) : const Color(0xffb64c60))),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(glyph('power_button'), size: 16), const SizedBox(width: 8), const Text('停止后台')])),
-          ]),
-        ]),
-      ]),
-    ));
+    );
+    return Align(
+      alignment: Alignment.topLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 860),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          children: [
+            group('外观', [
+              LayoutBuilder(
+                builder: (context, constraints) => constraints.maxWidth < 400
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('主题'),
+                          const SizedBox(height: 10),
+                          themePicker,
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          const Expanded(child: Text('主题')),
+                          themePicker,
+                        ],
+                      ),
+              ),
+            ]),
+            group(
+              '数据与备份',
+              [
+                Text(
+                  '数据目录',
+                  style: TextStyle(fontSize: 12, color: colors.muted),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                  decoration: BoxDecoration(
+                    color: colors.control.withValues(alpha: .65),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SelectableText(
+                          directory,
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.5,
+                            color: colors.text,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Tooltip(
+                        message: '复制路径',
+                        child: IconButton(
+                          icon: const Icon(FluentIcons.copy, size: 15),
+                          onPressed: directory.isEmpty
+                              ? null
+                              : () => action(() async {
+                                  await Clipboard.setData(
+                                    ClipboardData(text: directory),
+                                  );
+                                  await message('路径已复制');
+                                }),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (backups.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  for (final backup in backups.reversed.take(10))
+                    ListTile(
+                      leading: Icon(glyph('archive'), size: 16),
+                      title: Text('$backup'),
+                    ),
+                ],
+                const SizedBox(height: 14),
+                Text(
+                  '恢复前停止后台。恢复会回到备份时点，并另存当前数据。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.5,
+                    color: colors.muted,
+                  ),
+                ),
+              ],
+              action: commandButton(
+                '创建备份',
+                () => action(() async {
+                  final result = await widget.api.request(
+                    '/backups',
+                    method: 'POST',
+                  );
+                  await message('备份完成：${result['id']}');
+                  await refresh();
+                }),
+                icon: 'save',
+              ),
+            ),
+            group('运行', [
+              Text(
+                '千变 ${status['version'] ?? ''} · ${status['platform'] ?? ''}',
+                style: TextStyle(fontSize: 13, color: colors.muted),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  commandButton('退出登录', () async {
+                    await widget.api.request('/logout', method: 'POST');
+                    widget.api.token = '';
+                    widget.onLogout();
+                  }, icon: 'sign_out'),
+                  Button(
+                    onPressed: () async {
+                      if (await confirm(
+                        '停止千变后台？',
+                        '机器人连接与插件都会停止。关闭管理窗口不会停止后台。',
+                      )) {
+                        await action(() async {
+                          await widget.api.request('/shutdown', method: 'POST');
+                          await message('后台正在停止');
+                        });
+                      }
+                    },
+                    style: ButtonStyle(
+                      foregroundColor: WidgetStatePropertyAll(
+                        colors.dark
+                            ? const Color(0xffffa7af)
+                            : const Color(0xffb64c60),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(glyph('power_button'), size: 16),
+                        const SizedBox(width: 8),
+                        const Text('停止后台'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ]),
+          ],
+        ),
+      ),
+    );
   }
-
 }
 
 class ChatEntry {

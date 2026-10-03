@@ -441,7 +441,11 @@ FluentThemeData workspaceTheme(Brightness brightness) {
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
-        foregroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.disabled) ? colors.muted : colors.text),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? colors.muted
+              : colors.text,
+        ),
         backgroundColor: WidgetStateProperty.resolveWith(
           (states) =>
               states.contains(WidgetState.hovered) ||
@@ -462,8 +466,13 @@ FluentThemeData workspaceTheme(Brightness brightness) {
               ? Color.lerp(colors.accent, colors.text, .08)
               : colors.accent,
         ),
-        foregroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.disabled)
-            ? colors.muted : colors.dark ? const Color(0xff16213a) : Colors.white),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? colors.muted
+              : colors.dark
+              ? const Color(0xff16213a)
+              : Colors.white,
+        ),
       ),
     ),
     navigationPaneTheme: NavigationPaneThemeData(
