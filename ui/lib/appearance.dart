@@ -12,10 +12,10 @@ class WorkspacePalette {
   Color get section => dark ? const Color(0xe6202b40) : const Color(0xe6ffffff);
   Color get control => dark ? const Color(0xff29364d) : const Color(0xffedf1fa);
   Color get text => dark ? const Color(0xffecf1ff) : const Color(0xff25304b);
-  Color get muted => dark ? const Color(0xffa1aec7) : const Color(0xff728099);
+  Color get muted => dark ? const Color(0xffa1aec7) : const Color(0xff66728a);
   Color get selected =>
       dark ? const Color(0xff344366) : const Color(0xffe8edff);
-  Color get accent => dark ? const Color(0xffa9b7ff) : const Color(0xff6676df);
+  Color get accent => dark ? const Color(0xffa9b7ff) : const Color(0xff5868ce);
   Color get edge => dark ? const Color(0x18c0d1ff) : const Color(0xafffffff);
   Color get success => dark ? const Color(0xff74dbc0) : const Color(0xff289d86);
   List<Color> get backdrop => dark
@@ -164,7 +164,7 @@ class DesktopShell extends StatelessWidget {
       ),
     );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Semantics(
         selected: active,
         child: open
@@ -213,7 +213,7 @@ class DesktopShell extends StatelessWidget {
                                 open ? 18 : 12,
                                 24,
                                 open ? 18 : 12,
-                                24,
+                                20,
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -264,9 +264,9 @@ class DesktopShell extends StatelessWidget {
                                       Padding(
                                         padding: const EdgeInsets.fromLTRB(
                                           14,
-                                          12,
+                                          8,
                                           0,
-                                          10,
+                                          6,
                                         ),
                                         child: Text(
                                           group.$1,
@@ -278,7 +278,7 @@ class DesktopShell extends StatelessWidget {
                                       ),
                                     for (final index in group.$2)
                                       navigation(context, index, open),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 2),
                                   ],
                                 ],
                               ),

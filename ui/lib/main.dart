@@ -88,6 +88,12 @@ class Api {
 IconData glyph(String name) =>
     FluentIcons.allIcons[name] ?? FluentIcons.settings;
 
+String readableTime(dynamic value) {
+  final date = DateTime.tryParse('$value')?.toLocal();
+  if (date == null) return '$value';
+  return '${date.month}/${date.day} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+}
+
 Widget field(String label, Widget child, {String? hint}) => Padding(
   padding: const EdgeInsets.only(bottom: 16),
   child: InfoLabel(
@@ -903,7 +909,7 @@ class _WorkspaceState extends State<Workspace> {
                   children: [
                     Icon(glyph(entry.$2), size: 17, color: colors.accent),
                     const SizedBox(width: 12),
-                    Expanded(child: Text(entry.$1)),
+                    Expanded(child: Text(entry.$1, textAlign: TextAlign.start)),
                     Icon(glyph('chevron_right'), size: 10, color: colors.muted),
                   ],
                 ),
@@ -994,7 +1000,7 @@ class _WorkspaceState extends State<Workspace> {
                       color: colors.accent,
                     ),
                     title: Text('${notice['message']}'),
-                    subtitle: Text('${notice['time']}'),
+                    subtitle: Text(readableTime(notice['time'])),
                   ),
                 )
                 .toList(),
