@@ -1,101 +1,66 @@
-# 千变 Qianbian
+# 千变
 
-千变是面向 CoC / DND 的便携跑团骰系，提供 React Web 和 Fluent UI 桌面界面。通过 OneBot 11 对接独立 QQ 协议端，数据保存在程序旁，支持 Python 与 Rust 插件。
+千变是一款便携的 QQ 跑团骰系，主要支持 CoC 7，兼容 DND 5e 基础指令。提供 Windows、Linux 版本，可通过 React Web 或 Fluent UI 桌面界面管理。
 
-[功能与用法图表](docs/features.html)可离线查看、搜索与导出。
+支持掷骰、角色卡、技能检定、理智检定、成长、牌堆和跑团记录，也可以添加自定义规则与 Python、Rust 插件。
 
 ## 启动
 
-| 平台 | Web | Fluent 桌面 |
+| 平台 | Web 版 | 桌面版 |
 |---|---|---|
-| Windows | qianbian-windows-web.exe | qianbian-windows-ui.exe |
-| Linux | qianbian-linux-x86_64 | 解压桌面包后运行 qianbian-ui |
+| Windows | 运行 `qianbian-windows-web.exe` | 运行 `qianbian-windows-ui.exe` |
+| Linux | 运行 `qianbian-linux-x86_64` | 解压桌面包，运行 `qianbian-ui` |
 
-直接运行对应入口，无需编译。Linux 可执行文件需先添加执行权限。默认 Web 地址为 `http://127.0.0.1:9610`，管理令牌位于 `data/config/admin-token.txt`。关闭桌面窗口或浏览器页面不会停止后台；停止后台使用设置页的单独操作。
+下载对应版本后即可运行。Linux 需要给入口文件添加执行权限；桌面版需要图形会话及 GTK 3、libstdc++、liblzma，支持 Ubuntu 24.04。
 
-Linux 桌面需要 GTK 3、libstdc++、liblzma 及图形会话，运行基线为 Ubuntu 24.04。Linux Web 无需图形环境。Windows 桌面包首次启动会自动释放随包资源。
+Web 管理地址默认为 `http://127.0.0.1:9610`，登录令牌在 `data/config/admin-token.txt`。桌面版会自动连接本机后台。
 
-```text
-qianbian --data-dir D:\千变数据
-qianbian --listen 127.0.0.1:9611
-qianbian backup
-qianbian check-backup data/backups/备份名称
-qianbian restore data/backups/备份名称 --confirm
-```
+关闭窗口或浏览器后，骰子仍会运行。需要退出时，在「设置」中停止后台。
 
-数据路径默认相对于入口程序，不受终端工作目录影响。恢复前必须停止后台；恢复会回到备份时点，同时保留恢复前的完整备份。一个数据目录只允许一个后台运行。
+## 连接 QQ
 
-## QQ 连接
+千变通过 OneBot 11 连接 QQ，需要先运行支持该协议的 QQ 协议端。
 
-在管理界面的「账号与群」配置账号，或停止后台后编辑 `data/config/server.json`。示例不包含实际令牌：
+1. 在「账号与群」中添加账号，填写机器人 QQ 号和访问令牌。
+2. 使用反向 WebSocket 时，将协议端的 Universal 地址设为 `ws://后台地址:9610/onebot/账号标识`，两端填写相同的访问令牌。
+3. 使用正向 WebSocket 时，在千变中填写协议端的 Universal WebSocket 地址。
+4. 保存后重启后台，在「账号与群」中查看连接状态。
 
-```json
-{
-  "listen": "127.0.0.1:9610",
-  "masters": ["你的QQ号"],
-  "prefixes": [".", "。"],
-  "accounts": [{
-    "id": "main",
-    "self_id": "机器人QQ号",
-    "mode": "reverse",
-    "url": "",
-    "token": "请生成至少16字符的独立令牌",
-    "enabled": true
-  }],
-  "blocked_users": [],
-  "allowed_groups": [],
-  "cooldown_ms": 500
-}
-```
+## 常用指令
 
-反向连接使用 `ws://后台地址:9610/onebot/main`，OneBot 端选择 Universal，并使用相同访问令牌。正向连接把 `mode` 改为 `forward`、`url` 设置为协议端的 Universal WebSocket 地址。连接配置及监听地址修改后重启后台；权限、前缀和冷却立即生效。远程访问请使用 HTTPS/WSS 反向代理，默认不对公网监听。
+默认支持 `.` 和 `。` 前缀。发送 `.help` 查看帮助。
 
-## 跑团
+| 指令 | 用途 |
+|---|---|
+| `.r 1d100` | 掷骰 |
+| `.rh 1d100` | 暗骰，结果私聊发送 |
+| `.st new 调查员` | 创建角色卡 |
+| `.st 力量60 理智65 侦查50` | 设置角色属性 |
+| `.st lock` | 将当前角色绑定到群 |
+| `.ra 侦查` | 技能检定 |
+| `.rab1 侦查` | 带一个奖励骰的检定 |
+| `.sc 0/1d6` | 理智检定 |
+| `.en 侦查` | 技能成长 |
+| `.log on 雨夜调查` | 开始记录跑团 |
+| `.log off` / `.log on` | 暂停 / 继续记录 |
+| `.log end` | 结束记录 |
 
-```text
-.st new 调查员
-.st 力量60 理智65 侦查50
-.st lock
-.ra 侦查
-.rab1 侦查
-.rh 1d100
-.sc 0/1d6
-.en 侦查
-.log on 雨夜调查
-.log off
-.log on
-.log end
-.log upload 雨夜调查
-```
+DND 可使用 `.dnd` 生成属性，`.adv` / `.dis` 进行优势 / 劣势检定，`.ri 名称 [加值]` 登记先攻，`.init` 查看先攻顺序。
 
-`.help` 查看指令，`.st help` 查看角色操作。群绑定优先于用户默认卡；切换默认卡不会解除群绑定。SC/成长从角色卡读取数值时写回，显式提供数值时仅计算。暗骰只私聊，无法确认送达时不向群公开、不重新投掷。
+角色卡、规则和牌堆可以在管理界面查看与编辑。团录可以查看并导出为 TXT、HTML、JSON。
 
-团录发送目标是当前QQ群。现阶段按要求仅预留群文件上传插件接口，不要求域名、不创建下载站；未接入上传器时，日志保留在本地，管理端可导出完整文件。不同群的同名日志分别保存。
+更多功能见 [功能与用法图表](docs/features.html)。
 
-DND 基础提供 `.dnd`、`.adv [加值]`、`.dis [加值]`、`.ri 名称 [加值]` 和 `.init`。CoC 内置房规 0 为 7 版成功等级，房规 1 使用 1—5 大成功。复杂房规可由插件扩展。
+## 自定义
 
-## 自定义规则和牌堆
+自定义规则放在 `data/rules/`，牌堆放在 `data/decks/`，也可以直接在管理界面编辑。保存后即可使用，无需重启。
 
-文件保存到 `data/rules/名称.json`、`data/decks/名称.json`，下次指令读取时生效，也可在管理端编辑。规则示例：
+插件在「插件」页加载、启用或停用，支持热加载。Python 插件需要可用的 Python 解释器。编写插件可参考 [插件协议](docs/plugin-protocol.md)、[Python 示例](examples/python-plugin/) 和 [Rust 示例](examples/rust_plugin.rs)。
 
-```json
-{"id":"d20-target","label":"D20目标检定","faces":20,"comparison":"gte","critical":20,"fumble":1}
-```
+## 数据与备份
 
-角色使用 `.st temp d20-target`，再用 `.ra 技能 目标值` 检定。牌堆示例：
+数据保存在入口程序旁的 `data/` 文件夹。移动整个程序文件夹即可带走数据；Web 版和桌面版可以接着使用同一份数据。
 
-```json
-{"without_replacement":false,"entries":[{"text":"雨夜","weight":2},{"text":"{地点}","weight":1}]}
-```
+在「设置」中创建备份。更换程序前，退出界面并停止后台，替换程序文件，保留 `data/`。
 
-## 插件
-
-目录为 `data/plugins/<插件标识>/<版本>/plugin.json`，管理页输入该相对路径加载。清单、Python 示例和 SDK 在 `examples/python-plugin/`、`sdk/python/`；Rust 示例为 `examples/rust_plugin.rs`。详细协议见 [插件协议](docs/plugin-protocol.md)。
-
-Python 插件需自行指定可用解释器；没有 Python 不影响基础 Rust 功能。插件是可信的本机代码，进程隔离不等于操作系统沙箱。停用保留数据，重新启用恢复使用；接口不兼容或启动失败时显示原因。
-
-## 更换版本
-
-停止后台及界面，替换程序文件，保留整个 `data/`。不同 Web/UI 版本共用数据。`runtime/` 存储版本资源及旧程序，当前版本不自动清理这些文件，便于离线回退。回退时将保留的发布文件复制回原入口位置，或显式指定原数据目录；不要直接从版本资源子目录启动并期待自动找到原数据。
-
-数据兼容的旧版可直接启动；不兼容的旧版拒绝写入，应使用新版或恢复对应的升级前备份。
+需要指定其他数据目录时，启动时添加 `--data-dir "数据目录"`。恢复备份前请停止后台；恢复会回到备份时的状态，并保留恢复前的数据备份。
