@@ -37,7 +37,13 @@ main:
           - /usr/local/cargo/registry:copy-on-write
           - /usr/local/cargo/git:copy-on-write
       stages:
-        - name: 编译并并发验证OneBot功能
+        - name: 准备发布程序与独立验收工具
+          script: |
+            cargo build --locked --release --bin qianbian
+            mkdir -p dist
+            cp target/release/qianbian dist/qianbian-linux-x86_64
+            python3 scripts/build-protocol-check.py
+        - name: 直接验收已有Linux发布程序
           script: |
             python3 scripts/verify-linux-functions.py || true
             if python3 -c "import json; assert json.load(open('dist/functional-report/summary.json'))['status']=='passed'"; then
@@ -57,6 +63,8 @@ main:
               - dist/functional-report/onebot-tests.log
               - dist/functional-report/rust_sdk.json
               - dist/functional-transcripts.tar.gz
+              - dist/qianbian-linux-x86_64
+              - dist/qianbian-protocol-check
         - name: 确认所有功能验收通过
           script: python3 -c "import json; assert json.load(open('dist/functional-report/summary.json'))['status']=='passed'; assert json.load(open('dist/functional-report/rust_sdk.json'))['status']=='passed'"
   api_trigger_release:

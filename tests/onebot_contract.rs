@@ -61,7 +61,10 @@ impl Backend {
             )?,
         )?;
         let error = fs::File::create(root.path().join("backend.log"))?;
-        let child = Command::new(env!("CARGO_BIN_EXE_qianbian"))
+        let executable = std::env::var_os("QIANBIAN_TEST_BINARY")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_qianbian")));
+        let child = Command::new(executable)
             .arg("--root")
             .arg(root.path())
             .current_dir(std::env::temp_dir())
@@ -228,6 +231,32 @@ fn message(action: &Value) -> String {
         .map(|s| s["data"]["text"].as_str().unwrap_or(""))
         .collect()
 }
+fn bracket_numbers(text: &str) -> Result<Vec<i64>> {
+    let start = text.find('[').context("missing dice candidates")?;
+    let end = text[start..]
+        .find(']')
+        .context("unclosed dice candidates")?
+        + start;
+    Ok(serde_json::from_str(&text[start..=end])?)
+}
+fn coc_rank(roll: i64, target: i64) -> u8 {
+    if roll == 1 {
+        5
+    } else if roll == 100 || (target < 50 && roll >= 96) {
+        0
+    } else if roll <= target / 5 {
+        4
+    } else if roll <= target / 2 {
+        3
+    } else if roll <= target {
+        2
+    } else {
+        1
+    }
+}
+fn coc_verdict(roll: i64, target: i64) -> &'static str {
+    ["大失败", "失败", "成功", "困难成功", "极难成功", "大成功"][coc_rank(roll, target) as usize]
+}
 struct Peer {
     out: mpsc::Sender<Value>,
     actions: mpsc::Receiver<Value>,
@@ -320,7 +349,7 @@ impl Peer {
     }
     async fn quiet(&mut self) -> Result<()> {
         ensure!(
-            tokio::time::timeout(Duration::from_millis(220), self.actions.recv())
+            tokio::time::timeout(Duration::from_millis(500), self.actions.recv())
                 .await
                 .is_err(),
             "unexpected reply"
@@ -429,18 +458,110 @@ async fn onebot_reverse_cards_coc_dnd() -> Result<()> {
         .ends_with("80"),
         "other group default card"
     );
-    for text in [
-        ".st alias 观察=侦查",
-        ".ra 观察",
-        ".rab1 侦查",
-        ".rap1 侦查",
-        ".coc",
-        ".ti",
-        ".li",
-    ] {
+    peer.command(33001, USER, Some(GROUP), ".st alias 观察=侦查")
+        .await?;
+    for command in [".ra 观察", ".rab1 侦查", ".rap1 侦查"] {
+        let text = message(&peer.command(33001, USER, Some(GROUP), command).await?);
+        let (head, verdict) = text.split_once('：').context("CoC check format")?;
+        let roll: i64 = head
+            .split_whitespace()
+            .last()
+            .context("roll/target")?
+            .strip_suffix("/50")
+            .context("alias must resolve skill 50")?
+            .parse()?;
         ensure!(
-            !message(&peer.command(33001, USER, Some(GROUP), text).await?).starts_with("未完成"),
-            "CoC operation: {text}"
+            (1..=100).contains(&roll) && verdict.starts_with(coc_verdict(roll, 50)),
+            "CoC grade: {text}"
+        );
+        if command.starts_with(".rab") || command.starts_with(".rap") {
+            let values = bracket_numbers(&text)?;
+            ensure!(
+                values.len() == 2 && values.iter().all(|v| (1..=100).contains(v)),
+                "bonus/penalty candidates"
+            );
+            let expected = if command.starts_with(".rab") {
+                values.iter().min()
+            } else {
+                values.iter().max()
+            };
+            ensure!(
+                Some(&roll) == expected,
+                "bonus/penalty must select proper candidate"
+            );
+        }
+    }
+    let generated = message(&peer.command(33001, USER, Some(GROUP), ".coc").await?);
+    let attrs: std::collections::BTreeMap<_, _> = generated
+        .lines()
+        .nth(1)
+        .context("CoC attributes")?
+        .split_whitespace()
+        .map(|token| -> Result<_> {
+            let cut = token
+                .find(|c: char| c.is_ascii_digit())
+                .context("attribute value")?;
+            Ok((token[..cut].to_string(), token[cut..].parse::<i64>()?))
+        })
+        .collect::<Result<_>>()?;
+    for name in ["力量", "体质", "敏捷", "外貌", "意志", "幸运"] {
+        ensure!(
+            attrs
+                .get(name)
+                .is_some_and(|n| (15..=90).contains(n) && n % 5 == 0),
+            "CoC 3d6 attribute: {name}"
+        );
+    }
+    for name in ["体型", "智力", "教育"] {
+        ensure!(
+            attrs
+                .get(name)
+                .is_some_and(|n| (40..=90).contains(n) && n % 5 == 0),
+            "CoC 2d6+6 attribute: {name}"
+        );
+    }
+    ensure!(
+        attrs.get("理智") == attrs.get("意志")
+            && attrs["魔法"] == attrs["意志"] / 5
+            && attrs["生命"] == (attrs["体质"] + attrs["体型"]) / 10,
+        "derived CoC attributes"
+    );
+    for (command, expected) in [
+        (
+            ".ti",
+            vec![
+                "失忆：忘记近期发生的事件。",
+                "身心症状：出现短暂的身体症状。",
+                "暴力冲动：由守秘人决定表现。",
+                "偏执：暂时无法信任周围的人。",
+                "重要之人：把眼前的人认作重要之人。",
+                "昏厥：短暂失去意识。",
+                "逃跑：强烈希望离开现场。",
+                "歇斯底里：无法抑制情绪。",
+                "恐惧：产生强烈恐惧。",
+                "躁狂：被某种行为冲动支配。",
+            ],
+        ),
+        (
+            ".li",
+            vec![
+                "失忆",
+                "被窃",
+                "遍体鳞伤",
+                "暴力行为",
+                "极端信念",
+                "重要之人",
+                "被收容",
+                "逃避",
+                "恐惧症",
+                "躁狂症",
+            ],
+        ),
+    ] {
+        let text = message(&peer.command(33001, USER, Some(GROUP), command).await?);
+        ensure!(
+            expected.contains(&text.as_str()),
+            "madness result outside default deck: {text}"
         );
     }
     peer.command(33001, USER, Some(GROUP), ".sc 1/1 20").await?;
@@ -481,10 +602,35 @@ async fn onebot_reverse_cards_coc_dnd() -> Result<()> {
     let mut oppose = event(33001, USER, Some(GROUP), "", true, true);
     oppose["message"] = json!([{"type":"text","data":{"text":".rav 侦查 "}},{"type":"at","data":{"qq":(USER+1).to_string()}}]);
     peer.send(oppose).await?;
+    let opposed = message(&peer.action().await?);
+    let lines: Vec<_> = opposed.lines().collect();
     ensure!(
-        !message(&peer.action().await?).starts_with("未完成"),
-        "array @ opposition"
+        lines.len() == 3,
+        "opposition must contain both rolls and outcome"
     );
+    let mut ranks = vec![];
+    for (line, user, value) in [(lines[0], USER, after), (lines[1], USER + 1, 60)] {
+        let parts: Vec<_> = line.split_whitespace().collect();
+        ensure!(
+            parts.len() == 4 && parts[0] == user.to_string() && parts[1] == "侦查",
+            "opposition participants"
+        );
+        let (roll, target) = parts[2].split_once('/').context("opposition roll")?;
+        let roll = roll.parse::<i64>()?;
+        ensure!(
+            (1..=100).contains(&roll)
+                && target.parse::<i64>()? == value
+                && parts[3] == coc_verdict(roll, value),
+            "opposition grade/target"
+        );
+        ranks.push((coc_rank(roll, value), value));
+    }
+    let expected = match ranks[0].cmp(&ranks[1]) {
+        std::cmp::Ordering::Greater => "己方胜出",
+        std::cmp::Ordering::Less => "对方胜出",
+        _ => "平局",
+    };
+    ensure!(lines[2] == expected, "opposition outcome");
     let exported = message(&peer.command(33001, USER, Some(GROUP), ".st export").await?);
     let mut card: Value = serde_json::from_str(&exported)?;
     card["name"] = json!("导入卡");
@@ -507,16 +653,63 @@ async fn onebot_reverse_cards_coc_dnd() -> Result<()> {
         attrs.len() == 6 && attrs.iter().all(|v| (3..=18).contains(v)),
         "DND stat generation"
     );
-    for cmd in [".adv 5", ".dis -2", ".ri 勇者 5", ".ri 法师 -1"] {
+    for (command, modifier, high) in [(".adv 5", 5, true), (".dis -2", -2, false)] {
+        let text = message(&peer.command(33001, USER, Some(GROUP), command).await?);
+        let dice = bracket_numbers(&text)?;
         ensure!(
-            !message(&peer.command(33001, USER, Some(GROUP), cmd).await?).starts_with("未完成"),
-            "DND operation: {cmd}"
+            dice.len() == 2 && dice.iter().all(|n| (1..=20).contains(n)),
+            "DND d20 candidates"
+        );
+        let selected = *if high {
+            dice.iter().max()
+        } else {
+            dice.iter().min()
+        }
+        .unwrap();
+        ensure!(
+            text.starts_with(&format!(
+                "{selected} + {modifier} = {} (",
+                selected + modifier
+            )),
+            "DND advantage/disadvantage modifier: {text}"
         );
     }
+    for (name, modifier) in [("勇者", 5), ("法师", -1)] {
+        let text = message(
+            &peer
+                .command(33001, USER, Some(GROUP), &format!(".ri {name} {modifier}"))
+                .await?,
+        );
+        let total = text
+            .strip_prefix(&format!("{name} 先攻："))
+            .context("initiative format")?
+            .parse::<i64>()?;
+        ensure!(
+            (1..=20).contains(&(total - modifier)),
+            "initiative d20/modifier"
+        );
+        ensure!(
+            backend.world("a")?["value"]["rooms"][GROUP.to_string()]["initiative"][name] == total,
+            "initiative persistence"
+        );
+    }
+    let initiative = message(&peer.command(33001, USER, Some(GROUP), ".init").await?);
+    let lines: Vec<_> = initiative.lines().collect();
     ensure!(
-        message(&peer.command(33001, USER, Some(GROUP), ".init").await?).contains("勇者"),
-        "initiative listing"
+        lines.len() == 2 && initiative.contains("勇者") && initiative.contains("法师"),
+        "initiative participants"
     );
+    let scores: Vec<i64> = lines
+        .iter()
+        .map(|line| {
+            line.rsplit('：')
+                .next()
+                .context("initiative score")?
+                .parse()
+                .map_err(Into::into)
+        })
+        .collect::<Result<_>>()?;
+    ensure!(scores[0] >= scores[1], "initiative must be descending");
     peer.command(33001, USER, Some(GROUP), ".init clear")
         .await?;
     peer.command(33001, USER, Some(GROUP), ".setrule dnd5e")
