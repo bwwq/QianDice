@@ -687,7 +687,10 @@ class _WorkspaceState extends State<Workspace> {
     ),
     pane: NavigationPane(
       size: const NavigationPaneSize(
-        openWidth: 196, openMinWidth: 196, openMaxWidth: 196, compactWidth: 60,
+        openWidth: 196,
+        openMinWidth: 196,
+        openMaxWidth: 196,
+        compactWidth: 60,
       ),
       selected: page,
       onChanged: (index) => setState(() => page = index),
@@ -698,11 +701,17 @@ class _WorkspaceState extends State<Workspace> {
           : PaneDisplayMode.compact,
       header: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
-        child: Row(children: [
-          Icon(glyph('circle_fill'), size: 7, color: WorkspacePalette.of(context).muted),
-          const SizedBox(width: 8),
-          Text('后台运行中', style: FluentTheme.of(context).typography.caption),
-        ]),
+        child: Row(
+          children: [
+            Icon(
+              glyph('circle_fill'),
+              size: 7,
+              color: WorkspacePalette.of(context).muted,
+            ),
+            const SizedBox(width: 8),
+            Text('后台运行中', style: FluentTheme.of(context).typography.caption),
+          ],
+        ),
       ),
       items: [
         for (final entry in pages)
@@ -718,11 +727,16 @@ class _WorkspaceState extends State<Workspace> {
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
         child: Surface(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Row(children: [
-            Icon(pages[page].$2, size: 20),
-            const SizedBox(width: 12),
-            Text(pages[page].$1, style: FluentTheme.of(context).typography.title),
-          ]),
+          child: Row(
+            children: [
+              Icon(pages[page].$2, size: 20),
+              const SizedBox(width: 12),
+              Text(
+                pages[page].$1,
+                style: FluentTheme.of(context).typography.title,
+              ),
+            ],
+          ),
         ),
       ),
       content: Align(
@@ -730,56 +744,62 @@ class _WorkspaceState extends State<Workspace> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1120),
           child: Column(
-        children: [
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: InfoBar(
-                title: const Text('操作未完成'),
-                content: Text(error!),
-                severity: InfoBarSeverity.error,
-                onClose: () => setState(() => error = null),
-              ),
-            ),
-          if (feedback != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: InfoBar(
-                title: Text(feedback!),
-                severity: InfoBarSeverity.success,
-                onClose: () => setState(() => feedback = null),
-              ),
-            ),
-          Expanded(
-            child: IndexedStack(
-              key: pageContentKey,
-              index: page,
-              children: [
-                overview(),
-                accounts(),
-                characters(),
-                ContentPage(
-                  api: widget.api,
-                  kind: 'rules',
-                  edit: editJson,
-                  prompt: prompt,
+            children: [
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
+                  child: InfoBar(
+                    title: const Text('操作未完成'),
+                    content: Text(error!),
+                    severity: InfoBarSeverity.error,
+                    onClose: () => setState(() => error = null),
+                  ),
                 ),
-                ContentPage(
-                  api: widget.api,
-                  kind: 'decks',
-                  edit: editJson,
-                  prompt: prompt,
+              if (feedback != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
+                  child: InfoBar(
+                    title: Text(feedback!),
+                    severity: InfoBarSeverity.success,
+                    onClose: () => setState(() => feedback = null),
+                  ),
                 ),
-                LogsPage(api: widget.api, worlds: worlds),
-                pluginPage(),
-                ChatPage(api: widget.api),
-                settings(),
-              ],
-            ),
+              Expanded(
+                child: IndexedStack(
+                  key: pageContentKey,
+                  index: page,
+                  children: [
+                    overview(),
+                    accounts(),
+                    characters(),
+                    ContentPage(
+                      api: widget.api,
+                      kind: 'rules',
+                      edit: editJson,
+                      prompt: prompt,
+                    ),
+                    ContentPage(
+                      api: widget.api,
+                      kind: 'decks',
+                      edit: editJson,
+                      prompt: prompt,
+                    ),
+                    LogsPage(api: widget.api, worlds: worlds),
+                    pluginPage(),
+                    ChatPage(api: widget.api),
+                    settings(),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      ),
+        ),
       ),
     ),
   );
@@ -845,65 +865,70 @@ class _WorkspaceState extends State<Workspace> {
           ],
         ),
       ),
-      LayoutBuilder(builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 720 ? 4 : 2;
-        final width = (constraints.maxWidth - 12 * (columns - 1)) / columns;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-                  ('在线账号', '${connections.length}', 'group'),
-                  ('角色卡', '$cardCount', 'contact'),
-                  (
-                    '启用插件',
-                    '${plugins.where((plugin) => plugin['enabled'] == true).length}',
-                    'plug_connected',
-                  ),
-                  (
-                    '运行时间',
-                    '${((status['uptime_seconds'] ?? 0) / 60).floor()} 分钟',
-                    'clock',
-                  ),
-                ]
-                .map(
-                  (entry) => SizedBox(
-                    width: width,
-                    child: Surface(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 720 ? 4 : 2;
+          final width = (constraints.maxWidth - 12 * (columns - 1)) / columns;
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children:
+                [
+                      ('在线账号', '${connections.length}', 'group'),
+                      ('角色卡', '$cardCount', 'contact'),
+                      (
+                        '启用插件',
+                        '${plugins.where((plugin) => plugin['enabled'] == true).length}',
+                        'plug_connected',
+                      ),
+                      (
+                        '运行时间',
+                        '${((status['uptime_seconds'] ?? 0) / 60).floor()} 分钟',
+                        'clock',
+                      ),
+                    ]
+                    .map(
+                      (entry) => SizedBox(
+                        width: width,
+                        child: Surface(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  entry.$1,
-                                  style: FluentTheme.of(
-                                    context,
-                                  ).typography.caption,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      entry.$1,
+                                      style: FluentTheme.of(
+                                        context,
+                                      ).typography.caption,
+                                    ),
+                                  ),
+                                  Icon(glyph(entry.$3), size: 18),
+                                ],
                               ),
-                              Icon(glyph(entry.$3), size: 18),
+                              const SizedBox(height: 18),
+                              Text(
+                                entry.$2,
+                                style: FluentTheme.of(context).typography.title,
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 18),
-                          Text(
-                            entry.$2,
-                            style: FluentTheme.of(context).typography.title,
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                )
-                .toList(),
-        );
-      }),
+                    )
+                    .toList(),
+          );
+        },
+      ),
       const SizedBox(height: 24),
       if (connections.isEmpty)
         section('连接机器人', [
-          Text('添加 QQ 账号后，就可以在群里开始跑团。',
-              style: TextStyle(color: WorkspacePalette.of(context).muted)),
+          Text(
+            '添加 QQ 账号后，就可以在群里开始跑团。',
+            style: TextStyle(color: WorkspacePalette.of(context).muted),
+          ),
           const SizedBox(height: 16),
           commandButton('添加账号', () => setState(() => page = 1), icon: 'add'),
         ]),
@@ -1266,62 +1291,88 @@ class _ChatPageState extends State<ChatPage> {
     child: Column(
       children: [
         Surface(
-          child: Column(children: [
-            Row(
-              children: [
-                Expanded(child: field('玩家', TextBox(controller: user))),
-                const SizedBox(width: 16),
-                Expanded(child: field('练习群', TextBox(controller: group))),
-              ],
-            ),
-            Row(children: [
-              Icon(glyph('info'), size: 14, color: WorkspacePalette.of(context).muted),
-              const SizedBox(width: 8),
-              Flexible(child: Text('练习模式 · 不发送 QQ 消息，不修改正式角色。',
-                  style: FluentTheme.of(context).typography.caption)),
-            ]),
-          ]),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: field('玩家', TextBox(controller: user))),
+                  const SizedBox(width: 16),
+                  Expanded(child: field('练习群', TextBox(controller: group))),
+                ],
+              ),
+              Row(
+                children: [
+                  Icon(
+                    glyph('info'),
+                    size: 14,
+                    color: WorkspacePalette.of(context).muted,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '练习模式 · 不发送 QQ 消息，不修改正式角色。',
+                      style: FluentTheme.of(context).typography.caption,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         Expanded(
           child: messages.isEmpty
-              ? Center(child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(glyph('cube_shape'), size: 36, color: WorkspacePalette.of(context).muted),
-                    const SizedBox(height: 20),
-                    Text('掷一次骰子', style: FluentTheme.of(context).typography.subtitle),
-                    const SizedBox(height: 16),
-                    Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
-                      for (final command in ['.r 1d100', '.coc', '.help'])
-                        commandButton(command, () => input.text = command),
-                    ]),
-                  ],
-                ))
-              : ListView.builder(
-            reverse: true,
-            itemCount: messages.length,
-            itemBuilder: (context, index) {
-              final item = messages[messages.length - 1 - index];
-              return Align(
-                alignment: item.$1
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 760),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: item.$1
-                        ? WorkspacePalette.of(context).selected
-                        : WorkspacePalette.of(context).section,
-                    borderRadius: BorderRadius.circular(8),
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        glyph('cube_shape'),
+                        size: 36,
+                        color: WorkspacePalette.of(context).muted,
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        '掷一次骰子',
+                        style: FluentTheme.of(context).typography.subtitle,
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          for (final command in ['.r 1d100', '.coc', '.help'])
+                            commandButton(command, () => input.text = command),
+                        ],
+                      ),
+                    ],
                   ),
-                  child: SelectableText(item.$2),
+                )
+              : ListView.builder(
+                  reverse: true,
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final item = messages[messages.length - 1 - index];
+                    return Align(
+                      alignment: item.$1
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 760),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: item.$1
+                              ? WorkspacePalette.of(context).selected
+                              : WorkspacePalette.of(context).section,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: SelectableText(item.$2),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
         const SizedBox(height: 12),
         Container(
@@ -1331,33 +1382,37 @@ class _ChatPageState extends State<ChatPage> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
-          children: [
-            Expanded(
-              child: TextBox(
-                controller: input,
-                onSubmitted: (_) => send(),
-                placeholder: '输入指令，如 .r 1d100',
-                decoration: const WidgetStatePropertyAll(BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border.fromBorderSide(BorderSide.none),
-                )),
-                foregroundDecoration: const WidgetStatePropertyAll(BoxDecoration(
-                  border: Border.fromBorderSide(BorderSide.none),
-                )),
+            children: [
+              Expanded(
+                child: TextBox(
+                  controller: input,
+                  onSubmitted: (_) => send(),
+                  placeholder: '输入指令，如 .r 1d100',
+                  decoration: const WidgetStatePropertyAll(
+                    BoxDecoration(
+                      color: Colors.transparent,
+                      border: Border.fromBorderSide(BorderSide.none),
+                    ),
+                  ),
+                  foregroundDecoration: const WidgetStatePropertyAll(
+                    BoxDecoration(
+                      border: Border.fromBorderSide(BorderSide.none),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            FilledButton(
-              onPressed: busy ? null : send,
-              child: busy
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: ProgressRing(strokeWidth: 2),
-                    )
-                  : const Text('发送'),
-            ),
-          ],
-        ),
+              const SizedBox(width: 12),
+              FilledButton(
+                onPressed: busy ? null : send,
+                child: busy
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: ProgressRing(strokeWidth: 2),
+                      )
+                    : const Text('发送'),
+              ),
+            ],
+          ),
         ),
       ],
     ),

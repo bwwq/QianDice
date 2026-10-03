@@ -12,7 +12,8 @@ class WorkspacePalette {
   Color get control => dark ? const Color(0xff343434) : const Color(0xffe5e4dd);
   Color get text => dark ? const Color(0xfff0ead6) : const Color(0xff252521);
   Color get muted => dark ? const Color(0xffb6b3a9) : const Color(0xff737269);
-  Color get selected => dark ? const Color(0xff493d32) : const Color(0xffdedbcf);
+  Color get selected =>
+      dark ? const Color(0xff493d32) : const Color(0xffdedbcf);
   Color get accent => text;
 }
 
@@ -53,7 +54,11 @@ FluentThemeData workspaceTheme(Brightness brightness) {
     cardColor: colors.section,
     menuColor: colors.control,
     typography: Typography.raw(
-      title: base.title!.copyWith(fontSize: 22, height: 1.4, color: colors.text),
+      title: base.title!.copyWith(
+        fontSize: 22,
+        height: 1.4,
+        color: colors.text,
+      ),
       subtitle: base.subtitle!.copyWith(fontSize: 16, color: colors.text),
       body: base.body!.copyWith(fontSize: 14, color: colors.text),
       caption: base.caption!.copyWith(fontSize: 12, color: colors.muted),
@@ -65,10 +70,13 @@ FluentThemeData workspaceTheme(Brightness brightness) {
           EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
         foregroundColor: WidgetStatePropertyAll(colors.text),
-        backgroundColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.hovered) || states.contains(WidgetState.pressed)
-                ? colors.control
-                : colors.section),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.hovered) ||
+                  states.contains(WidgetState.pressed)
+              ? colors.control
+              : colors.section,
+        ),
       ),
       filledButtonStyle: ButtonStyle(
         shape: shape,
@@ -81,18 +89,23 @@ FluentThemeData workspaceTheme(Brightness brightness) {
       backgroundColor: colors.canvas,
       overlayBackgroundColor: colors.section,
       highlightColor: colors.accent,
-      tileColor: WidgetStateProperty.resolveWith((states) =>
-          states.contains(WidgetState.selected)
-              ? colors.selected
-              : states.contains(WidgetState.hovered)
-                  ? colors.control
-                  : Colors.transparent),
-      selectedTextStyle: WidgetStatePropertyAll(TextStyle(
-        fontSize: 14, fontWeight: FontWeight.w600, color: colors.text,
-      )),
-      unselectedTextStyle: WidgetStatePropertyAll(TextStyle(
-        fontSize: 14, color: colors.muted,
-      )),
+      tileColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? colors.selected
+            : states.contains(WidgetState.hovered)
+            ? colors.control
+            : Colors.transparent,
+      ),
+      selectedTextStyle: WidgetStatePropertyAll(
+        TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: colors.text,
+        ),
+      ),
+      unselectedTextStyle: WidgetStatePropertyAll(
+        TextStyle(fontSize: 14, color: colors.muted),
+      ),
       selectedIconColor: WidgetStatePropertyAll(colors.text),
       unselectedIconColor: WidgetStatePropertyAll(colors.muted),
     ),
