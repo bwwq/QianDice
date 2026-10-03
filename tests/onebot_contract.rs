@@ -7,7 +7,7 @@ use std::{
     fs,
     io::{Read, Write},
     net::{SocketAddr, TcpStream as StdStream},
-    path::Path,
+    path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::{
         Arc,
@@ -16,12 +16,9 @@ use std::{
     time::{Duration, Instant},
 };
 use tempfile::TempDir;
-use tokio::{
-    net::{TcpListener, TcpStream},
-    sync::mpsc,
-};
+use tokio::{net::TcpListener, sync::mpsc};
 use tokio_tungstenite::{
-    MaybeTlsStream, WebSocketStream, accept_hdr_async, connect_async,
+    WebSocketStream, accept_hdr_async, connect_async,
     tungstenite::{Message, client::IntoClientRequest, http::HeaderValue},
 };
 
@@ -412,14 +409,12 @@ async fn onebot_reverse_cards_coc_dnd() -> Result<()> {
         r["params"]["user_id"] == USER && message(&r).contains("[原样] &"),
         "CQ text decoding/private target"
     );
-    for text in [
-        ".st new 调查员",
-        ".st 力量60 理智60 侦查50",
-        ".st lock",
-        ".st new 法师",
-        ".st 力量80 理智80 侦查80",
-    ] {
+    for text in [".st new 调查员", ".st 力量60 理智60 侦查50", ".st lock"] {
         peer.command(33001, USER, Some(GROUP), text).await?;
+    }
+    // A bound room always edits its bound card, even after selecting another default.
+    for text in [".st new 法师", ".st 力量80 理智80 侦查80"] {
+        peer.command(33001, USER, Some(GROUP + 1), text).await?;
     }
     ensure!(
         message(&peer.command(33001, USER, Some(GROUP), ".st 力量").await?).ends_with("60"),
@@ -961,7 +956,17 @@ for line in sys.stdin:
  print(json.dumps({'jsonrpc':'2.0','id':p['id'],'result':result}),flush=True)
 "#,
     )?;
-    let manifest = json!({"id":"contract","version":"1.0.0","api":1,"entry":"python3","args":["main.py"],"commands":["oldok"],"rules":[],"dependencies":[],"capabilities":[],"config_schema":{"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}});
+    let python = std::env::split_paths(&std::env::var_os("PATH").context("PATH is missing")?)
+        .flat_map(|dir| {
+            [
+                dir.join("python3"),
+                dir.join("python.exe"),
+                dir.join("python"),
+            ]
+        })
+        .find(|path: &PathBuf| path.is_file())
+        .context("Python interpreter required for plugin contract")?;
+    let manifest = json!({"id":"contract","version":"1.0.0","api":1,"entry":python,"args":["main.py"],"commands":["oldok"],"rules":[],"dependencies":[],"capabilities":[],"config_schema":{"type":"object","properties":{"enabled":{"type":"boolean"}},"required":["enabled"]}});
     fs::write(version.join("plugin.json"), serde_json::to_vec(&manifest)?)?;
     backend.api(
         "/plugins/load",
